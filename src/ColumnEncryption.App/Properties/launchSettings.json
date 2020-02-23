@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AlwaysProtected.App": {
+      "commandName": "Project",
+      "commandLineArgs": "encrypt -m TestConfig.yaml -d TestData.csv -o testout.csv"
+    }
+  }
+}
