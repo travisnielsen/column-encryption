@@ -1,0 +1,29 @@
+{
+  "folders": [
+    {
+      // Source code
+      "name": "ColumnEncryption.App",
+      "path": "src/ColumnEncryptionApp"
+    },
+    {
+      // Source code
+      "name": "ColumnEncryption.Functions",
+      "path": "src/ColumnEncryptionFunctions" 
+    },
+    {
+      // Source code
+      "name": "Microsoft.ColumnEncryption",
+      "path": "src/Microsoft.ColumnEncryption" 
+    },
+    {
+      // Source code
+      "name": "SQL.FLE.Demo.Crypto",
+      "path": "src/SQL.FLE.Demo.Crypto" 
+    },
+    {
+      // Documentation
+      "name": "docs",
+      "path": "docs" 
+    }
+  ]
+}

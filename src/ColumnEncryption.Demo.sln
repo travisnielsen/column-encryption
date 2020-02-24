@@ -7,9 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.ColumnEncryption"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SQL.FLE.Demo.Crypto", "SQL.FLE.Demo.Crypto\SQL.FLE.Demo.Crypto.csproj", "{77679C38-CEEB-4584-82BC-7BA825FB96C9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColumnEncryption.App", "ColumnEncryption.App\ColumnEncryption.App.csproj", "{0EF6CB01-02B4-4EEB-A189-3BF05AFA4300}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColumnEncryption.App", "ColumnEncryptionApp\ColumnEncryption.App.csproj", "{0EF6CB01-02B4-4EEB-A189-3BF05AFA4300}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColumnEncryption.Functions", "ColumnEncryption.Functions\ColumnEncryption.Functions.csproj", "{B29E108C-E6DE-4DAB-A1E7-5EF0669326F4}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ColumnEncryption.Functions", "ColumnEncryptionFunctions\ColumnEncryption.Functions.csproj", "{B29E108C-E6DE-4DAB-A1E7-5EF0669326F4}"
 	ProjectSection(ProjectDependencies) = postProject
 		{4C41F8C1-0111-416F-A210-EB5BA50D2D7F} = {4C41F8C1-0111-416F-A210-EB5BA50D2D7F}
 	EndProjectSection

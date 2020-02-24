@@ -354,3 +354,6 @@ MigrationBackup/
 
 # Configuratin YAML file
 *.yaml
+
+# MACOS
+.DS_Store
