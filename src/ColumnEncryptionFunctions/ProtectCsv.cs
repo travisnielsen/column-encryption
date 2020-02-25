@@ -9,6 +9,7 @@ using Microsoft.ColumnEncryption.DataProviders;
 using Microsoft.ColumnEncryption.Encoders;
 using Microsoft.ColumnEncryption.EncryptionProviders;
 using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace ColumnEncryption.Functions
 {
@@ -16,15 +17,14 @@ namespace ColumnEncryption.Functions
     {
         [FunctionName("ProtectCsv")]
         public static void Run(
-            [BlobTrigger("csv/{csvName}", Connection = "AzureWebJobsStorage")]Stream csvFile, string csvName,
-            [Blob("config/TestConfig.yaml", FileAccess.Read)] Stream configFile,
-            [Blob("output/{csvName}", FileAccess.Write)] Stream outputFile,
+            [BlobTrigger("csvinput/{csvName}", Connection = "AzureWebJobsStorage")]Stream csvFile, string csvName,
+            [Blob("config/ClinicConfig.yaml", FileAccess.Read)] Stream configFile,
+            [Blob("csvprotected/{csvName}", FileAccess.Write)] Stream outputFile,
             ILogger log)
         {
             log.LogInformation($"C# Blob trigger function Processed blob\n Name:{csvName} \n Size: {csvFile.Length} Bytes");
 
             CSVDataReader csvDataReader = new CSVDataReader(new StreamReader(csvFile));
-
 
             using (CSVDataWriter csvDataWriter = new CSVDataWriter(new StreamWriter(outputFile)))
             {
@@ -49,6 +49,7 @@ namespace ColumnEncryption.Functions
                 log.LogInformation("Getting things ready to encrypt and store to csv...");
                 columnEncryptor.Encrypt();
                 log.LogInformation("Done encrypting.");
+
             }
         }
     }
