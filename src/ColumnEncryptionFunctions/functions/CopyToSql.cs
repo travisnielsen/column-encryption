@@ -1,19 +1,12 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
-using Microsoft.ColumnEncryption;
-using Microsoft.ColumnEncryption.Auth;
-using Microsoft.ColumnEncryption.Config;
 using Microsoft.ColumnEncryption.Data;
 using Microsoft.ColumnEncryption.DataProviders;
-using Microsoft.ColumnEncryption.Encoders;
-using Microsoft.ColumnEncryption.EncryptionProviders;
-using Microsoft.ColumnEncryption.Metadata;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
@@ -31,12 +24,48 @@ namespace ColumnEncryption.Functions
             CSVDataReader csvDataReader = new CSVDataReader(new StreamReader(csvFile));
             var columns = csvDataReader.Read();
            
+            DataTable dt = GetRecordsDt(columns);
+            InsertPatients(dt);
+  
+            /*
             Patient[] patients = GetRecords(columns);
-
             foreach(Patient newPatient in patients)
             {
                 InsertPatient(newPatient);
-            } 
+            }  
+            */       
+            
+        }
+
+
+        static int InsertPatients(DataTable patients)
+        {
+            int returnValue = 0;
+
+            using (var connection = new SqlConnection(connectionString))
+            {
+                using (var bulkCopy = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.AllowEncryptedValueModifications))
+                {
+                    foreach (var column in patients.Columns)
+                        bulkCopy.ColumnMappings.Add(column.ToString(), column.ToString());
+
+                    bulkCopy.DestinationTableName = "Patients";
+
+                    // TODO: The next line is not working.
+                    try
+                    {
+                        connection.Open();
+                        bulkCopy.WriteToServer(patients);
+                    }
+                    catch (SqlException ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
+                    
+                }
+            }
+
+            return returnValue;
         }
 
         static int InsertPatient(Patient newPatient)
@@ -47,10 +76,12 @@ namespace ColumnEncryption.Functions
 
             SqlCommand sqlCmd = new SqlCommand(sqlCmdText);
 
-            SqlParameter paramSSN = new SqlParameter(@"@SSN", newPatient.SSN);
-            // paramSSN.DbType = DbType.AnsiStringFixedLength;
-            paramSSN.Direction = ParameterDirection.Input;
-            // paramSSN.Size = 11;
+            byte[] encryptedssn = Encoding.ASCII.GetBytes(newPatient.SSN.ToString());
+            SqlParameter paramSSN = new SqlParameter(@"@SSN", SqlDbType.VarBinary, encryptedssn.Length)
+            {
+                Direction = ParameterDirection.Input,
+                Value = encryptedssn
+            };
 
             SqlParameter paramFirstName = new SqlParameter(@"@FirstName", newPatient.FirstName);
             paramFirstName.DbType = DbType.String;
@@ -71,6 +102,7 @@ namespace ColumnEncryption.Functions
 
             using (sqlCmd.Connection = new SqlConnection(connectionString))
             {
+
                 try
                 {
                     sqlCmd.Connection.Open();
@@ -105,10 +137,10 @@ namespace ColumnEncryption.Functions
             foreach (var column in columns)
             {
                 var name = column.Name;
+                int i = 0;
 
                 foreach(var value in column.Data)
                 {
-                    int i = 0;
                     switch (name)
                     {
                         case "SSN":
@@ -133,7 +165,99 @@ namespace ColumnEncryption.Functions
 
             return patientArr;
         }
-   
+
+        private static DataTable GetRecordsDt(IEnumerable<ColumnData> columns)
+        {
+            int numRecords = 0;
+
+            // TODO: This is really stupid but I'm out of patience with parseing all this nonesense just to get a count of records
+            foreach (var column in columns)
+            {
+                numRecords = column.Data.Count;
+                break;
+            }
+
+            DataTable dt = new DataTable();
+
+            dt.Columns.Add(new DataColumn
+            {
+                ColumnName = "PatientId",
+                DataType = typeof(int),
+                AutoIncrement = true,
+                AutoIncrementSeed = 10
+            });
+
+            // set up columns for the dataTable
+            foreach(var column in columns)
+            {
+                switch(column.Name)
+                {
+                    case "BirthDate":
+                        dt.Columns.Add(column.Name, typeof(System.DateTime));
+                        break;
+                    
+                    case "SSN":
+                        dt.Columns.Add(column.Name, typeof(Byte[]));
+                        break;
+                    
+                    default:
+                        dt.Columns.Add(column.Name, typeof(string));
+                        break;
+                }
+            }
+
+            // Add rows
+            for (int i = 0; i < numRecords; i++) { dt.Rows.Add(); }
+
+            // Populate data
+            foreach (var column in columns)
+            {
+                var name = column.Name;
+                int i = 0;
+
+                foreach(var value in column.Data)
+                {
+                    switch (name)
+                    {
+                        
+                        case "SSN":
+                            dt.Rows[i].SetField(name, Encoding.ASCII.GetBytes(value.ToString()));
+                            i++;
+                            break; 
+                        
+                        case "BirthDate":
+                            dt.Rows[i].SetField(name, Convert.ToDateTime(value));
+                            i++;
+                            break; 
+                        default:
+                            dt.Rows[i].SetField(name, value.ToString());
+                            i++;
+                            break;
+                    } 
+                }
+            }
+
+            dt.AcceptChanges();
+
+            string data = string.Empty;
+            StringBuilder sb = new StringBuilder();
+
+            foreach(DataRow row in dt.Rows)
+            {
+                foreach (var item in row.ItemArray)
+                {
+                    sb.Append(item);
+                    sb.Append(',');
+                }
+                sb.AppendLine();
+            }
+
+            data = sb.ToString();
+            Console.WriteLine(data);
+
+            return dt;
+        }
+
     }
 
     public class Patient
