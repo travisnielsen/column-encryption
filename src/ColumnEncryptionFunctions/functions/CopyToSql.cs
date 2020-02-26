@@ -44,7 +44,7 @@ namespace ColumnEncryption.Functions
 
             using (var connection = new SqlConnection(connectionString))
             {
-                using (var bulkCopy = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.AllowEncryptedValueModifications))
+                using (var bulkCopy = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity | SqlBulkCopyOptions.AllowEncryptedValueModifications))
                 {
                     foreach (var column in patients.Columns)
                         bulkCopy.ColumnMappings.Add(column.ToString(), column.ToString());
@@ -60,8 +60,7 @@ namespace ColumnEncryption.Functions
                     catch (SqlException ex)
                     {
                         Console.WriteLine(ex.Message);
-                    }
-                    
+                    } 
                 }
             }
 
@@ -102,7 +101,6 @@ namespace ColumnEncryption.Functions
 
             using (sqlCmd.Connection = new SqlConnection(connectionString))
             {
-
                 try
                 {
                     sqlCmd.Connection.Open();
@@ -219,9 +217,9 @@ namespace ColumnEncryption.Functions
                 {
                     switch (name)
                     {
-                        
                         case "SSN":
-                            dt.Rows[i].SetField(name, Encoding.ASCII.GetBytes(value.ToString()));
+                            Byte[] ssnByte = Microsoft.ColumnEncryption.Common.Converter.FromHexString(value.ToString());
+                            dt.Rows[i].SetField(name, ssnByte);
                             i++;
                             break; 
                         
