@@ -4,11 +4,13 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.ColumnEncryption.Data;
 using Microsoft.ColumnEncryption.DataProviders;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage;
 
 namespace ColumnEncryption.Functions
 {
@@ -17,7 +19,7 @@ namespace ColumnEncryption.Functions
         static string connectionString = System.Environment.GetEnvironmentVariable("SQL_CONNECTION");
 
         [FunctionName("CopyToSql")]
-        public static void Run([BlobTrigger("csvprotected/{csvName}", Connection = "AzureWebJobsStorage")]Stream csvFile, string csvName, ILogger log)
+        public static async Task Run([BlobTrigger("csvprotected/{csvName}", Connection = "AzureWebJobsStorage")]Stream csvFile, string csvName, ILogger log)
         {
             log.LogInformation($"CopyToSql Function processing blob\n name:{csvName} \n Size: {csvFile.Length} Bytes");
             var connString = System.Environment.GetEnvironmentVariable("SQL_CONNECTION");
@@ -25,7 +27,7 @@ namespace ColumnEncryption.Functions
             var columns = csvDataReader.Read();
            
             DataTable dt = GetRecordsDt(columns);
-            InsertPatients(dt);
+            bool success = InsertPatients(dt);
   
             /*
             Patient[] patients = GetRecords(columns);
@@ -35,23 +37,31 @@ namespace ColumnEncryption.Functions
             }  
             */       
             
+            if(success)
+            {
+                // cleanup
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(System.Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
+                var blobClient = storageAccount.CreateCloudBlobClient();
+                var container = blobClient.GetContainerReference("csvprotected");
+                var blockBlob = container.GetBlockBlobReference($"{csvName}");
+                bool deleted = await blockBlob.DeleteIfExistsAsync();
+                if (deleted) { log.LogInformation($"Deleted source file: {csvName}"); }
+            }
         }
 
-
-        static int InsertPatients(DataTable patients)
+        static bool InsertPatients(DataTable patients)
         {
-            int returnValue = 0;
+            bool success = true;
 
             using (var connection = new SqlConnection(connectionString))
             {
-                using (var bulkCopy = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.KeepIdentity | SqlBulkCopyOptions.AllowEncryptedValueModifications))
+                using (var bulkCopy = new SqlBulkCopy(connectionString, SqlBulkCopyOptions.AllowEncryptedValueModifications))
                 {
                     foreach (var column in patients.Columns)
                         bulkCopy.ColumnMappings.Add(column.ToString(), column.ToString());
 
                     bulkCopy.DestinationTableName = "Patients";
 
-                    // TODO: The next line is not working.
                     try
                     {
                         connection.Open();
@@ -59,12 +69,13 @@ namespace ColumnEncryption.Functions
                     }
                     catch (SqlException ex)
                     {
+                        success = false;
                         Console.WriteLine(ex.Message);
                     } 
                 }
             }
 
-            return returnValue;
+            return success;
         }
 
         static int InsertPatient(Patient newPatient)
@@ -177,6 +188,7 @@ namespace ColumnEncryption.Functions
 
             DataTable dt = new DataTable();
 
+            /*
             dt.Columns.Add(new DataColumn
             {
                 ColumnName = "PatientId",
@@ -184,6 +196,7 @@ namespace ColumnEncryption.Functions
                 AutoIncrement = true,
                 AutoIncrementSeed = 10
             });
+            */
 
             // set up columns for the dataTable
             foreach(var column in columns)

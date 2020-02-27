@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.ColumnEncryption;
@@ -9,6 +10,7 @@ using Microsoft.ColumnEncryption.DataProviders;
 using Microsoft.ColumnEncryption.Encoders;
 using Microsoft.ColumnEncryption.EncryptionProviders;
 using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace ColumnEncryption.Functions
@@ -16,7 +18,7 @@ namespace ColumnEncryption.Functions
     public static class ProtectCsv
     {
         [FunctionName("ProtectCsv")]
-        public static void Run(
+        public static async Task Run(
             [BlobTrigger("csvinput/{csvName}", Connection = "AzureWebJobsStorage")]Stream csvFile, string csvName,
             [Blob("config/ClinicConfig.yaml", FileAccess.Read)] Stream configFile,
             [Blob("csvprotected/{csvName}", FileAccess.Write)] Stream outputFile,
@@ -50,6 +52,13 @@ namespace ColumnEncryption.Functions
                 columnEncryptor.Encrypt();
                 log.LogInformation("Done encrypting.");
 
+                // Cleanup
+                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(System.Environment.GetEnvironmentVariable("AzureWebJobsStorage"));
+                var blobClient = storageAccount.CreateCloudBlobClient();
+                var container = blobClient.GetContainerReference("csvinput");
+                var blockBlob = container.GetBlockBlobReference($"{csvName}");
+                bool deleted = await blockBlob.DeleteIfExistsAsync();
+                if (deleted) { log.LogInformation($"Deleted source file: {csvName}"); }
             }
         }
     }
