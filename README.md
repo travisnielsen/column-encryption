@@ -41,5 +41,9 @@ If the CEK is not present in the file, the sample application will generate one 
 
 > **NOTE:** Column Encryption Keys are always encrypted (wrapped) by a Column Master Key (CMK) hosted in Azure Key Vault. They are never exposed as plaintext. Access to decrypt CEKs is managed audited through Azure Key Vault access policies.
 
-## Deployment
+## Deployment and Operations
 
+Use following documentation for details on deployment and operations: 
+* [Management and Operations](docs/management-and-operations.md)
+* [Azure Environment Configuration](docs/configure-azure.md) (pre-requisites)
+* [Sample Azure Functions](ColumnEncryptionFunctions/README.md)
