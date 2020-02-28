@@ -44,6 +44,6 @@ If the CEK is not present in the file, the sample application will generate one 
 ## Deployment and Operations
 
 Use following documentation for details on deployment and operations: 
-* [Management and Operations](docs/management-and-operations.md)
+* [Management and Operations](docs/management-and-ops.md)
 * [Azure Environment Configuration](docs/configure-azure.md) (pre-requisites)
-* [Sample Azure Functions](ColumnEncryptionFunctions/README.md)
+* [Sample Azure Functions](src/ColumnEncryptionFunctions/README.md)
