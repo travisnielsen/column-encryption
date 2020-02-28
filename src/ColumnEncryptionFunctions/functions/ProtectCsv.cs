@@ -20,7 +20,7 @@ namespace ColumnEncryption.Functions
         [FunctionName("ProtectCsv")]
         public static async Task Run(
             [BlobTrigger("csvinput/{csvName}", Connection = "AzureWebJobsStorage")]Stream csvFile, string csvName,
-            [Blob("config/ClinicConfig.yaml", FileAccess.Read)] Stream configFile,
+            [Blob("config/ClinicConfig.yaml", FileAccess.ReadWrite)] CloudBlockBlob configFile,
             [Blob("csvprotected/{csvName}", FileAccess.Write)] Stream outputFile,
             ILogger log)
         {
@@ -28,11 +28,14 @@ namespace ColumnEncryption.Functions
 
             CSVDataReader csvDataReader = new CSVDataReader(new StreamReader(csvFile));
 
+            Stream configInputStream = await configFile.OpenReadAsync();
+            Stream configOutputStream = await configFile.OpenWriteAsync();
+
             using (CSVDataWriter csvDataWriter = new CSVDataWriter(new StreamWriter(outputFile)))
             {
                 var columnEncryptor = new ColumnEncryptor(
-                    new YamlConfigReader(configFile),
-                    new YamlConfigWriter(configFile),
+                    new YamlConfigReader(configInputStream),
+                    new YamlConfigWriter(configOutputStream),
                     new KeyProtectorFactory(
                         new Microsoft.ColumnEncryption.Common.Settings()
                         {

@@ -35,7 +35,6 @@ namespace Microsoft.ColumnEncryption.Config
         /// <param name="currentConfig"> Latest config data </param>
         public void Write(DataProtectionConfig currentConfig)
         {
-            /*
             if (configStream)
             {
                 using (StreamWriter streamWriter = new StreamWriter(configFile))
@@ -52,7 +51,6 @@ namespace Microsoft.ColumnEncryption.Config
                     serializer.Serialize(streamWriter, currentConfig);
                 }
             }
-            */
         }
     }
 }

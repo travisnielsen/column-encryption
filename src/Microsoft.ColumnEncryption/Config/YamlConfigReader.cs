@@ -30,6 +30,9 @@ namespace Microsoft.ColumnEncryption.Config
                 IDeserializer deserializer = new DeserializerBuilder().WithNamingConvention(PascalCaseNamingConvention.Instance).Build();
                 yamlConfig = deserializer.Deserialize<DataProtectionConfig>(reader);
                 configExists = true;
+
+                // TODO: Double-check on method to ensure this is disposed
+                configFile.Close();
             }
         }
 
