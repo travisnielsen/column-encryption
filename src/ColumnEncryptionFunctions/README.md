@@ -9,9 +9,45 @@ This is a set of Azure Functions that utilize the SQL Always Encrypted libraries
 
 Be sure your environment meets the following conditions:
 
-1. You have completed the [deployment and configuration steps](../../docs/configure-azure.md) for Azure Key Vault and a Service Principal within your Azure Environment
+1. You have completed the Azure [deployment and configuration steps](../../docs/configure-azure.md) for the SQL database, Azure Key Vault, and a Service Principal
 2. [.Net Core 3.1 SDK](https://dotnet.microsoft.com/download/dotnet-core/3.1) installed
 3. Visual Studio Code with the [Azure Functions extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions) configured
 
-## Setup (local development)
+## Setup and Debug (local)
 
+To run these functions locally, create a `local.settings.json` in the Functions project root directory with the following format:
+
+```json
+{
+    "IsEncrypted": false,
+    "Values": {
+      "AzureWebJobsStorage": "",
+      "AzureServicesAuthConnectionString": "RunAs=App;AppId={appId};TenantId={tenant};AppKey={password}",
+      "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+      "FUNCTIONS_EXTENSION_VERSION": "~3",
+      "SQL_CONNECTION": ""
+    }
+  }
+```
+
+Populate the following values to match the following items you created during the Azure setup:
+
+* **AzureWebJobsStorage**: Matches the value in the **Configuration** section of the Function App
+* **AzureServicesAuthConnectionString**: Where `{appId}`, `{tenant}`, and `{password}` with the output from the Service Principal creation steps
+* **SQL_CONNECTION**: Equals the connection string to the Clinics database
+
+> **NOTE:** Information contained within this file is sensitive and should be used only for development and testing purposes. Contents of this file should never be shared. By deafult, this file is exempted from Git in order to prevent it from being added to source code repositories.
+
+Once this is completed, you should now be able start the Functions runtime by navigating to the Debug icon in VS Code and clicking the green Start button with "Attach to .Net Functions" selected.
+
+<img src="img/debug-functionapp.png" width=350/>
+
+Alternative, you can start the function app without debugging by entering `func init` into a terminal session from the ColumnEncryptionFunctions directory.
+
+## Deploy to Azure
+
+There are several options for deploying source code for Function Apps to Azure. One straighforward approach is to push the sourcecode via the Azure Functions extension for VS Code. This is done by [invoking the Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) and entering "Functions" in the cursor. The deployment option will be suggested as shown below.
+
+<img src="img/deploy-functionapp.png" width=350/>
+
+After selecting your subscription and Function App, VS Code will handle the deployment.
