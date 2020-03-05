@@ -24,6 +24,11 @@
       // Documentation
       "name": "docs",
       "path": "docs" 
+    },
+    {
+      // Scripts
+      "name": "scripts",
+      "path": "scripts"
     }
   ]
 }
