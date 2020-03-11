@@ -249,23 +249,6 @@ namespace ColumnEncryption.Functions
             }
 
             dt.AcceptChanges();
-
-            string data = string.Empty;
-            StringBuilder sb = new StringBuilder();
-
-            foreach(DataRow row in dt.Rows)
-            {
-                foreach (var item in row.ItemArray)
-                {
-                    sb.Append(item);
-                    sb.Append(',');
-                }
-                sb.AppendLine();
-            }
-
-            data = sb.ToString();
-            Console.WriteLine(data);
-
             return dt;
         }
 
