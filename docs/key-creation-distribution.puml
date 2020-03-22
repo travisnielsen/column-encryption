@@ -1,0 +1,68 @@
+@startuml key-creation-distribution
+
+!define AzurePuml https://raw.githubusercontent.com/RicardoNiepel/Azure-PlantUML/release/2-1/dist
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Container.puml
+!includeurl AzurePuml/AzureCommon.puml
+!includeurl AzurePuml/Identity/AzureActiveDirectory.puml
+!includeurl AzurePuml/Security/AzureKeyVault.puml
+!includeurl AzurePuml/Web/AzureAPIManagement.puml
+!includeurl AzurePuml/Compute/AzureVirtualMachine.puml
+!includeurl AzurePuml/Compute/AzureFunction.puml
+!includeurl AzurePuml/Databases/AzureCosmosDb.puml
+!includeurl AzurePuml/Analytics/AzureEventHub.puml
+!includeurl AzurePuml/Databases/AzureSqlDatabase.puml
+!includeurl AzurePuml/Databases/AzureSqlDataWarehouse.puml
+!includeurl AzurePuml/DevOps/AzureApplicationInsights.puml
+!includeurl AzurePuml/DevOps/AzureRepos.puml
+!includeurl AzurePuml/DevOps/AzurePipelines.puml
+!includeurl AzurePuml/Storage/AzureBlobStorage.puml
+!includeurl AzurePuml/Storage/AzureDataLakeStorage.puml
+!includeurl AzurePuml/Networking/AzureVirtualNetwork.puml
+!includeurl AzurePuml/Networking/AzureVPNGateway.puml
+
+LAYOUT_LEFT_RIGHT
+
+' title Key Management Tools and Process
+
+skinparam Rectangle {
+    BorderColor<<virtualNetwork>> Green
+    BackgroundColor<<virtualNetwork>> White
+    BorderColor<<subnet>> Green
+    BackgroundColor<<subnet>> #CCFFB3
+}
+
+Person(admin, "Key Management Admin")
+
+System_Boundary(workstation, "Administrative Workstation") {
+    Container(powershell, "Column Encryption Keys", "SQL Database Objects", "Generate and wrap keys. Update metadata file")
+    Container(cli, "Column Master Keys", "Azure Management APIs", "Generate new RSA keys or upload from on-premises HSM")
+}
+
+System_Boundary(devops, "Enterprise Control Plane") {
+    AzureRepos(repo, "Master Configuration", "Git repository", "Review and approve pull request")
+    AzurePipelines(pipeline, "Deployment automation", "Self-hosted build agents", "Use supported client tools to deploy config and metadata. Release management approval gates")
+}
+
+System_Boundary(encryptionServices, "Enterprise Encryption Infrastructure") {
+    AzureBlobStorage(blobstore, "Metadata", "General Purpose v2 RA-GRS", "Contains column encryption settings and key metadata")
+    AzureKeyVault(kvphi, "Column Master Keys: PHI", "Premium SKU", "Keys stored in HSM with RBAC for crypto operations")
+}
+
+System_Boundary(app1, "Business Application") {
+    AzureSqlDatabase(sql, "OLTP", "Basic", "Contains column encryption settings and key metadat")
+}
+
+Rel(admin, powershell, "Uses")
+Rel(admin, cli, "Uses")
+Rel(cli, kvphi, "Update keys")
+
+Rel(powershell, repo, "Pull request")
+Rel(repo, pipeline, "Approval trigger")
+Rel(pipeline, sql, "Update metadata")
+Rel(pipeline, blobstore, "Update metadata")
+
+' ActiveDirectory(aad, "OAuth", "API registrations and scope assignments")
+' AzureApplicationInsights(appInsights, "Telemetry and logging", "Alerts")
+
+
+@end
