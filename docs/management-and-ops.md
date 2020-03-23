@@ -1,6 +1,6 @@
-# Key Management
+# Encryption Configuration Management
 
-The encryption infrastucture involes three main components:
+Management of the encryption infrastucture involes three main components:
 
 **Column Encryption Keys (CEKs)** - These are symetric (AES256) keys that are used to encrypt sensitive columns (fields). For performance and usability reasons, CEKs are typically embedded as metadata within a file or document or included as part of a database configuration. A CEK is always stored in an encrypted format so the metadata must always include a reference to a Column Master Key.
 
