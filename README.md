@@ -3,6 +3,7 @@
 The project describes an Azure-native topology for applying field (column) level encryption for a variety of scenarios across an organization's data estate. It includes sample code and documentation for evaluation purposes.
 
 The core tenant of this project is the use of two encryption libraries that have been in production with Microsoft for several years:
+
 1. The implementation of the `AEAD_AES_256_CBC_HMAC_SHA256` algorithm [within the open sourced versions of SQL Client](https://github.com/dotnet/SqlClient/tree/master/src/Microsoft.Data.SqlClient/netcore/src/Microsoft/Data/SqlClient).
 2. The [Always Encrypted Azure Key Vault Provider](https://docs.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient.alwaysencrypted.azurekeyvaultprovider?view=akvprovider-dotnet-core-1.1) for managing encryption and decryption of column master keys via Azure Key Vault.
 
