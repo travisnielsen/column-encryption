@@ -1,0 +1,64 @@
+@startuml encryption-topology
+
+!define AzurePuml https://raw.githubusercontent.com/RicardoNiepel/Azure-PlantUML/release/2-1/dist
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Container.puml
+!includeurl AzurePuml/AzureCommon.puml
+!includeurl AzurePuml/Identity/AzureActiveDirectory.puml
+!includeurl AzurePuml/Security/AzureKeyVault.puml
+!includeurl AzurePuml/Web/AzureAPIManagement.puml
+!includeurl AzurePuml/Compute/AzureFunction.puml
+!includeurl AzurePuml/Databases/AzureCosmosDb.puml
+!includeurl AzurePuml/Analytics/AzureEventHub.puml
+!includeurl AzurePuml/Databases/AzureSqlDatabase.puml
+!includeurl AzurePuml/Databases/AzureSqlDataWarehouse.puml
+!includeurl AzurePuml/DevOps/AzureApplicationInsights.puml
+!includeurl AzurePuml/Storage/AzureDataLakeStorage.puml
+!includeurl AzurePuml/Management/AzurePolicy.puml
+!includeurl AzurePuml/Networking/AzureVirtualNetwork.puml
+!includeurl AzurePuml/Networking/AzureVPNGateway.puml
+
+LAYOUT_LEFT_RIGHT
+
+title Data Encryption Topology
+
+skinparam Rectangle {
+    BorderColor<<virtualNetwork>> Green
+    BackgroundColor<<virtualNetwork>> White
+    BorderColor<<subnet>> Green
+    BackgroundColor<<subnet>> #CCFFB3
+}
+
+Container(dataFile, "Data file (CSV)", "SSN,RX_ID, SERVICE_DATE")
+
+Rectangle "Enterprise Vaults\n<color:green><$AzureVirtualNetwork>\n" as privateNetwork <<virtualNetwork>> {
+    AzureKeyVault(kvphi, "Customer PII vault", "Key: cmk-phi", "Allow: funcApp1")
+}
+
+Rectangle "Microservices" {
+    AzureFunction(func1, "Data Processing", "Always Protected SDK", "Managed Identity: funcApp1")
+    Container(func1Config, "Configuration file", "SSN: key = dek-phi, RX_ID: key = dek-phi", "dek-phi: key = cmk-phi")
+}
+
+Rectangle "Data Estate" as dataEstate <<dataEstate>> {
+    ' AzureEventHub(eh, "Clinic visits", "", "")
+    ' AzureSqlDatabase(sql, "OLTP", "", "")
+    AzureSqlDataWarehouse(sqldw, "Data warehouse", "", "encrypted columns")
+    ' AzureDataLakeStorage(adls, "", "", "")
+}
+
+dataEstate -[#ffffff]-- privateNetwork
+
+Rel(dataFile, func1, "1. Blob trigger")
+Rel_Back(func1, func1Config, "2. Load configuration")
+Rel(func1, kvphi, "3. Decrypt dek-phi with cmk-phi")
+Rel(func1, func1, "4. Encrypt: SSN, RX_ID")
+' Rel(func1, eh, "5. Publish data")
+' Rel(func1, sql, "5. Publish data")
+Rel(func1, sqldw, "5. Publish data")
+' Rel(func1, adls, "5. Publish data")
+
+' ActiveDirectory(aad, "OAuth", "API registrations and scope assignments")
+' AzureApplicationInsights(appInsights, "Telemetry and logging", "Alerts")
+
+
+@end

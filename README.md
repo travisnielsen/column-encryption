@@ -6,13 +6,21 @@ The core tenant of this project is the use of two encryption libraries that have
 1. The implementation of the `AEAD_AES_256_CBC_HMAC_SHA256` algorithm [within the open sourced versions of SQL Client](https://github.com/dotnet/SqlClient/tree/master/src/Microsoft.Data.SqlClient/netcore/src/Microsoft/Data/SqlClient).
 2. The [Always Encrypted Azure Key Vault Provider](https://docs.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient.alwaysencrypted.azurekeyvaultprovider?view=akvprovider-dotnet-core-1.1) for managing encryption and decryption of column master keys via Azure Key Vault.
 
-Because these libraries are portable, they can be used to provide standardized approach to data protection across a variety of workloads and scenarios. For example, sensitive fields encrypted via SQL Always Encrypted can be exported to a non-SQL system or data flow and decrypted by, for example, a microservice.
+Because these libraries are portable, a standardized and compatible approach to encryption can extend beyond just supported data engines such as Azure SQL Database. For example, records with sensitive columns encrypted via SQL Always Encrypted can be streamed as events as part of a change data capture (CDC) feed and subsequently decrypted and procecessed elsewhere by an authorized microservice.
 
-## Topology
+## Encryption Scenarios
 
-The model can be used in a variety of topologies. The canonical example used here is bulk encryption of source data based on data classification performed in a configuration file. The following diagram explains the workflow.
+The model can be used to support three principal scenarios: (1) migration from on-premises systems to a data lake, (2) data preparation and analytics via a distributed processing system, and (3) event driven architectures. The following diagram highlights (in yellow) where the aforementioned code libraries would be incorporated as part of an implementation in Azure as well as the services that support encryption configuration and key management.
 
 <img src="docs/img/encryption-topology.png" />
+
+## Components
+
+### Encryption SDK
+
+An encryption SDK will be used to perform cryptographic operations that are part of data flows outside of supported data platform clients. An early prototype of this SDK, implemented in .NET Core, is included as part of this repository. Thise SDK is intended to be pluggable in order to support a various enterprise management scenarios.
+
+### Encryption Metadata
 
 Sensitive columns are defined in the configuraiton file where a column encryption key (CEK) is referenced. There is a one-to-many relationship between a given CEK and columns. The following YAML is an example configuration for encrypting two columns with the same key and same algorithm.
 

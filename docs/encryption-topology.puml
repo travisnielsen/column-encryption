@@ -5,60 +5,111 @@
 !includeurl AzurePuml/AzureCommon.puml
 !includeurl AzurePuml/Identity/AzureActiveDirectory.puml
 !includeurl AzurePuml/Security/AzureKeyVault.puml
-!includeurl AzurePuml/Web/AzureAPIManagement.puml
+!includeurl AzurePuml/Security/AzureSentinel.puml
+!includeurl AzurePuml/Management/AzureLogAnalytics.puml
+!includeurl AzurePuml/Management/AzureMonitor.puml
+!includeurl AzurePuml/DevOps/AzureApplicationInsights.puml
 !includeurl AzurePuml/Compute/AzureFunction.puml
-!includeurl AzurePuml/Databases/AzureCosmosDb.puml
+!includeurl AzurePuml/Compute/AzureVirtualMachine.puml
+!includeurl AzurePuml/Compute/AzureVirtualMachineScaleSet.puml
 !includeurl AzurePuml/Analytics/AzureEventHub.puml
+!includeurl AzurePuml/Analytics/AzureDatabricks.puml
+!includeurl AzurePuml/Analytics/AzureAnalysisServices.puml
+!includeurl AzurePuml/Databases/AzureDataFactory.puml
+!includeurl AzurePuml/Databases/AzureCosmosDb.puml
 !includeurl AzurePuml/Databases/AzureSqlDatabase.puml
 !includeurl AzurePuml/Databases/AzureSqlDataWarehouse.puml
-!includeurl AzurePuml/DevOps/AzureApplicationInsights.puml
+!includeurl AzurePuml/Storage/AzureBlobStorage.puml
 !includeurl AzurePuml/Storage/AzureDataLakeStorage.puml
 !includeurl AzurePuml/Management/AzurePolicy.puml
 !includeurl AzurePuml/Networking/AzureVirtualNetwork.puml
+!includeurl AzurePuml/Networking/AzureExpressRoute.puml
 !includeurl AzurePuml/Networking/AzureVPNGateway.puml
+!includeurl AzurePuml/Web/AzureWebApp.puml
 
 LAYOUT_LEFT_RIGHT
 
-title Data Encryption Topology
+' title Azure Operational Topology (single-region)
 
 skinparam Rectangle {
-    BorderColor<<virtualNetwork>> Green
-    BackgroundColor<<virtualNetwork>> White
-    BorderColor<<subnet>> Green
-    BackgroundColor<<subnet>> #CCFFB3
+    BackgroundColor<<EnterpriseKeyMgmt>> #E3E3E3
+    BackgroundColor<<AzureVirtualMachine>> #FFFFB3
+    BackgroundColor<<AzureDatabricks>> #FFFFB3
+    BackgroundColor<<AzureFunction>> #FFFFB3
 }
 
-Container(dataFile, "Data file (CSV)", "SSN,RX_ID, SERVICE_DATE")
 
-Rectangle "Enterprise Vaults\n<color:green><$AzureVirtualNetwork>\n" as privateNetwork <<virtualNetwork>> {
-    AzureKeyVault(kvphi, "Customer PII vault", "Key: cmk-phi", "Allow: funcApp1")
+' Rectangle "<color:#0072C6><$AzureVirtualMachine></color>" <<AzureVirtualMachine>> as myFunction
+
+AzureDataFactory(adf, "Data Orchestration", "Data import and processing definitions")
+
+Rectangle "On-Premises" {
+    Container(dataFile, "Source system", "SSN,RX_ID, SERVICE_DATE")
+    AzureVirtualMachine(console, "INGEST", "Integration Runtime w/ Always Protected SDK", "Service Principal")
 }
 
-Rectangle "Microservices" {
-    AzureFunction(func1, "Data Processing", "Always Protected SDK", "Managed Identity: funcApp1")
-    Container(func1Config, "Configuration file", "SSN: key = dek-phi, RX_ID: key = dek-phi", "dek-phi: key = cmk-phi")
+Rectangle "Enterprise Key Management Infrastructure" <<enterpriseKeyMgmt>> {
+    AzureKeyVault(kvphi, "PHI vault", "Premium SKU for HSM", "RBAC for CMKs\nSoft delete\nPurge protection\nResource locking")
+    AzureBlobStorage(keymetadata, "Encryption Metadata", "General Purpose V2 (RA-GRS)", "WORM-backed storage\nGeo-replicated\nVersioning")
+    AzureLogAnalytics(logs, "Activity logs", "")
+    AzureSentinel(siem, "Threat detection", "")
+    AzureMonitor(monitor, "Control plane events and telemetry", "", "Performance metrics\nAlerts")
 }
 
-Rectangle "Data Estate" as dataEstate <<dataEstate>> {
-    ' AzureEventHub(eh, "Clinic visits", "", "")
-    ' AzureSqlDatabase(sql, "OLTP", "", "")
-    AzureSqlDataWarehouse(sqldw, "Data warehouse", "", "encrypted columns")
-    ' AzureDataLakeStorage(adls, "", "", "")
+Rectangle "Data Estate Core" {
+    AzureDataLakeStorage(adls, "STORE", "Gen2 w/AAD-based RBAC", "Parquet files w/ embedded key metadata")
+    AzureDatabricks(databricks, "PREPARE", "Parquet Modular Encryption","Service Principal")
 }
 
-dataEstate -[#ffffff]-- privateNetwork
+Rectangle "MODEL AND SERVE" {
+    AzureSqlDataWarehouse(sqldw, "Azure Synapse", "", "encrypted columns")
+    AzureAnalysisServices(aas, "Semantic Layer", "", "Column / row-level security\nDynamic data masking")
+    Container(powerbi, "PowerBI (web)", "Direct Connect","")
+    AzureSqlDatabase(sql, "OLTP / Reporting", "SQL Always Encrypted", "CMK metadata\nCEK metadata")
+    AzureVirtualMachineScaleSet(vmss, "SQL Analysis Services", "Load balanced", "CMKs (certificates)")
+    Container(powerbidesktop, "PowerBI (desktop)", "Direct Connect", "Reports / Dashboards")
+}
 
-Rel(dataFile, func1, "1. Blob trigger")
-Rel_Back(func1, func1Config, "2. Load configuration")
-Rel(func1, kvphi, "3. Decrypt dek-phi with cmk-phi")
-Rel(func1, func1, "4. Encrypt: SSN, RX_ID")
-' Rel(func1, eh, "5. Publish data")
-' Rel(func1, sql, "5. Publish data")
-Rel(func1, sqldw, "5. Publish data")
-' Rel(func1, adls, "5. Publish data")
+Rel(databricks, sqldw, "Push data w/ FLE")
+Rel(databricks, sql, "Push data w/ FLE")
 
-' ActiveDirectory(aad, "OAuth", "API registrations and scope assignments")
-' AzureApplicationInsights(appInsights, "Telemetry and logging", "Alerts")
+Rel(sqldw, aas, "Query")
+Rel_Back(aas, powerbi, "Load report")
+Rel(sql, vmss, "Query")
+Rel(vmss, vmss, "Decrypt")
+Rel_Back(vmss, powerbidesktop, "Loads report")
+
+Rectangle "Event Streaming" as EventStream {
+    AzureEventHub(eventhub, "Events", "Standard or Kafka", "Includes FLE-protected columns (Avro)")
+    AzureFunction(function, "EVENT PROCESSING", "App Services / Container", "Managed Identity")
+}
+
+Rel(eventhub, function, "pull events")
+Rel_Back(function, keymetadata, "Load config")
+Rel(function, function, "Decrypt, process, encrypt")
+' Rel(function, kvphi, "Decrypt DEK")
+
+adf -[#FF0000]-> console
+adf -[#FF0000]-> databricks
+
+console -[#00B300]-> kvphi: "<color:#00B300>Unwrap DEK"
+databricks -[#00B300]-> kvphi
+function -[#00B300]-> kvphi
+
+Rel(dataFile, console, "Data Factory connector")
+Rel_Back(console, keymetadata, "Load configuration")
+' Rel(console, kvphi, "Decrypt DEK")
+Rel(console, console, "Encrypt: SSN, RX_ID with DEK")
+Rel(console, adls, "Push FLE-protected data")
+Rel(adls, databricks, "1. load raw data")
+' Rel(databricks, kvphi, "2. Decrypt DEK")
+Rel(databricks, databricks, "3. Decrypt, process, encrypt")
+Rel_Back(adls, databricks, "4. Processed data")
+Rel(keymetadata, logs, "Activity")
+Rel(kvphi, logs, "Activity")
+Rel(logs, siem, "Forward events")
+Rel(keymetadata, monitor, "Change audit")
+Rel(kvphi, monitor, "Change audit")
 
 
 @end
