@@ -36,6 +36,12 @@ skinparam Rectangle {
     BackgroundColor<<AzureVirtualMachine>> #FFFFB3
     BackgroundColor<<AzureDatabricks>> #FFFFB3
     BackgroundColor<<AzureFunction>> #FFFFB3
+    BackgroundColor<<AzureSqlDataWarehouse>> #E6CCFF
+    BackgroundColor<<AzureSqlDatabase>> #CCFFDD
+    BackgroundColor<<AzureCosmosDb>> #CCFFDD
+    BackgroundColor<<AzureVirtualMachineScaleSet>> #CCFFDD
+    BackgroundColor<<powerBiWeb>> #E6CCFF
+    BackgroundColor<<AzureAnalysisServices>> #E6CCFF
 }
 
 
@@ -45,7 +51,7 @@ AzureDataFactory(adf, "Data Orchestration", "Data import and processing definiti
 
 Rectangle "On-Premises" {
     Container(dataFile, "Source system", "SSN,RX_ID, SERVICE_DATE")
-    AzureVirtualMachine(console, "INGEST", "Integration Runtime w/ Always Protected SDK", "Service Principal")
+    AzureVirtualMachine(console, "INGEST", "Always Protected SDK", "Service Principal")
 }
 
 Rectangle "Enterprise Key Management Infrastructure" <<enterpriseKeyMgmt>> {
@@ -62,26 +68,28 @@ Rectangle "Data Estate Core" {
 }
 
 Rectangle "MODEL AND SERVE" {
+    AzureCosmosDb(cosmos, "", "", "CMK metadata\nCEK metadata")
     AzureSqlDataWarehouse(sqldw, "Azure Synapse", "", "encrypted columns")
     AzureAnalysisServices(aas, "Semantic Layer", "", "Column / row-level security\nDynamic data masking")
-    Container(powerbi, "PowerBI (web)", "Direct Connect","")
+    Rectangle "<b>SaaS Reporting</b>\nSelf Service" <<powerBiWeb>> as powerbi
     AzureSqlDatabase(sql, "OLTP / Reporting", "SQL Always Encrypted", "CMK metadata\nCEK metadata")
-    AzureVirtualMachineScaleSet(vmss, "SQL Analysis Services", "Load balanced", "CMKs (certificates)")
+    ' AzureVirtualMachineScaleSet(vmss, "SQL Analysis Services", "Load balanced", "CMKs (certificates)")
     Container(powerbidesktop, "PowerBI (desktop)", "Direct Connect", "Reports / Dashboards")
 }
 
 Rel(databricks, sqldw, "Push data w/ FLE")
 Rel(databricks, sql, "Push data w/ FLE")
+Rel(databricks, cosmos, "Push data w/ FLE")
 
 Rel(sqldw, aas, "Query")
 Rel_Back(aas, powerbi, "Load report")
-Rel(sql, vmss, "Query")
-Rel(vmss, vmss, "Decrypt")
-Rel_Back(vmss, powerbidesktop, "Loads report")
+' Rel(sql, vmss, "Query")
+' Rel(vmss, vmss, "Decrypt")
+Rel_Back(sql, powerbidesktop, "Decrypt (ODBC)")
 
 Rectangle "Event Streaming" as EventStream {
     AzureEventHub(eventhub, "Events", "Standard or Kafka", "Includes FLE-protected columns (Avro)")
-    AzureFunction(function, "EVENT PROCESSING", "App Services / Container", "Managed Identity")
+    AzureFunction(function, "INGEST", "App Services / Container", "Managed Identity")
 }
 
 Rel(eventhub, function, "pull events")
@@ -89,12 +97,13 @@ Rel_Back(function, keymetadata, "Load config")
 Rel(function, function, "Decrypt, process, encrypt")
 ' Rel(function, kvphi, "Decrypt DEK")
 
-adf -[#FF0000]-> console
+' adf -[#FF0000]-> console
 adf -[#FF0000]-> databricks
 
 console -[#00B300]-> kvphi: "<color:#00B300>Unwrap DEK"
 databricks -[#00B300]-> kvphi
 function -[#00B300]-> kvphi
+kvphi <-[#00B300]- powerbidesktop
 
 Rel(dataFile, console, "Data Factory connector")
 Rel_Back(console, keymetadata, "Load configuration")
@@ -111,5 +120,11 @@ Rel(logs, siem, "Forward events")
 Rel(keymetadata, monitor, "Change audit")
 Rel(kvphi, monitor, "Change audit")
 
+legend right
+    |Color| Encryption Tooling |
+    |<#FFFFB3>| Always Protected SDK|
+    |<#CCFFDD>| Data engine client |
+    |<#D9B3FF>| In review |
+endlegend
 
-@end
+@enduml
