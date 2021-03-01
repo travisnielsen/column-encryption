@@ -1,13 +1,13 @@
 # Column Encryption Sample Application
 
-This is a sample console application written in .Net Core that uses the SQL Always Encrypted libraries to encrypt and decrypt columns within data files.
+This is a sample console application written in .NET 5.0 that uses Microsoft Data Encryption packages to encrypt and decrypt columns within data files.
 
 ## Prerequisites
 
 Be sure your environment meets the following conditions:
 
 1. You have completed the [deployment and configuration steps](../../docs/configure-azure.md) for Azure Key Vault and a Service Principal within your Azure Environment
-2. [.Net Core 3.1 SDK](https://dotnet.microsoft.com/download/dotnet-core/3.1) installed
+2. [.NET 5.0 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) installed
 3. Visual Studio Code with the [Azure Functions extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions) configured
 
 ## Setup (local development)

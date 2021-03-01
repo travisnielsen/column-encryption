@@ -1,118 +1,64 @@
 # Azure Environment Configuration
 
-This page documents the steps required to deploy and configure the Azure components necessary for running the various test scenarios described in this repository.
+This page documents the steps required to deploy and configure the Azure components necessary for running the various test scenarios described in this repository. The following must be installed in your local development envioronment:
 
-## Azure Function App
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+- [Azure Bicep](https://github.com/Azure/bicep/blob/ae8d7b320d82a0c6de152388ab7d7deef93dbf89/docs/installing.md)
 
-Create a Function App for hosting custom encryption services. Azure Cloud Shell is recommended for running these commands:
+## Deploy Azure Infrastructure
 
-```bash
-location="centralus"
-funcRgName=""
-storageAcctName=""
-appName=""
+The Azure Bicep file included in the `scripts` directory creates the following resources:
 
-az storage account create --name $storageAcctName --location $location --resource-group $funcRgName --sku Standard_LRS
+- **Key Vault**: hosts Column Master Keys (CMKs) and manages access
+- **Storage Account**: location for data files
+- **SQL Database**: contains sample data with SQL Always Encrypted to protect sensitive columns
 
-az functionapp create --resource-group $funcRgName --consumption-plan-location $location --runtime dotnet --os-type Linux --functions_version 3 --name $appName --storage-account $storageAcctName
-```
-
-A System Assigned Managed Identity will be used to access keys hosted in Azure Key Vault. Enable Managed Identity on the Function App by running the following command:
+To deploy this infrastrucrure, navigate to the `scripts` directory using a terminal window directory and run the following:
 
 ```bash
-az functionapp identity assign --name $appName --resource-group $funcRgName
+az login
+$userId=$(az ad user list --display-name '' --query "[].[objectId]" -o tsv)
+bicep build deployment.bicep
+az group create --name mdedemo --location centralus
+az deployment group create --resource-group mdedemo --template-file deployment.json  --parameters userObjectId=$userId
 ```
 
-Be sure to document the `principalId` listed in the JSON result. It will be required when assigning Key Vault access later in this document.
+Be sure to set your Azure Active Directory display name for the `--display-name` argument above. You can use the Azure Portal to confirm the resources after deployment completes.
 
-## Service Principal (local testing)
+## Configure Azure SQL Database and SQL Always Encrypted
 
-Enter the following in Azure CLI to create the test Service Principal.
+To configure the test `testdb` database, we will use a modified version of the setup instructions documented in this example: [Always Encrypted: Protect sensitive data and store encryption keys in Azure Key Vault](https://docs.microsoft.com/en-us/azure/sql-database/sql-database-always-encrypted-azure-key-vault?tabs=azure-cli#create-a-blank-sql-database)
 
-```bash
-az ad sp create-for-rbac --name alwaysprotected-dev --skip-assignment
-```
-
-Document the output as it will be required in the next steps.
-
-```json
-{
-  "appId": "[your_app_id]",
-  "displayName": "alwaysprotected-dev",
-  "name": "http://alwaysprotected-dev",
-  "password": "[your_password]",
-  "tenant": "[your_tenant_id]"
-}
-```
-
-## Azure Key Vault
-
-Azure CLI commands will be used to deploy and configure Azure Key Vault. To help streamline the setup, set the following environment variables to match your environment.
-
-```bash
-vaultName="your keyvault name"
-vaultRgName="resource group name"
-location="key vault location. Ex: centralus"
-keyName="name of your column master key"
-applicationId="service principal appId"
-functionPrincipalId="principalId for the Functions managed identity"
-```
-
-Create a new Azure Key Vault for hosting Column Master Keys:
-
-```bash
-az keyvault create --location $location --name $vaultName --resource-group $vaultRgName --enable-purge-protection true --enable-soft-delete true
-```
-
-Next, a Column Master Key (CMK) needs to be provisioned. The CMK is used to encrypt (wrap) Column Encryption Keys (CEKs). In this example, a 2048-bit RSA key is generated and stored in the Azure Key Vault HSM. For details of various options for keys in Key Vault, please see the [documentation](https://docs.microsoft.com/en-us/cli/azure/keyvault/key?view=azure-cli-latest#az-keyvault-key-create) for `az keyvault key create`.
-
-```bash
-az keyvault key create --name $keyName --vault-name $vaultName --kty RSA-HSM --protection hsm --size 2048
-```
-
-Next, permissions to use the CMK for crytographic operations are granted to the Service Principal created earlier (test environment only).
-
-```bash
-az keyvault set-policy --name $vaultName --key-permissions get, list, sign, unwrapKey, verify, wrapKey --resource-group $vaultRgName --spn $applicationId
-```
-
-Finally, assign permissions to the Managed Identity of the Function App.
-
->**NOTE**: Typically a production Key Vault would only have access polices for Managed Identites and not local developer accounts. Instructions to add permissions to both account types is purely for demonstration convenience.
-
-```bash
-az keyvault set-policy --name $vaultName --key-permissions get, list, sign, unwrapKey, verify, wrapKey --resource-group $vaultRgName --object-id $functionPrincipalId
-```
-
-## Azure SQL Database
-
-To configure the test Clinics database, we will use a modified version of the setup instructions documented in this example: [Always Encrypted: Protect sensitive data and store encryption keys in Azure Key Vault](https://docs.microsoft.com/en-us/azure/sql-database/sql-database-always-encrypted-azure-key-vault?tabs=azure-cli#create-a-blank-sql-database)
-
-First, use SQL Server Management Studio to create a blank datbase. Next, define its schema via this SQL statement
+First, connect to the `testdb` database via SQL Server Management Studio or the Query Editor in the Azure Portal and create the `userdata` table.
 
 ```SQL
-CREATE TABLE [dbo].[Patients](
-         [PatientId] [int] IDENTITY(1,1),
-         [SSN] [char](11) NOT NULL,
-         [FirstName] [nvarchar](50) NULL,
-         [LastName] [nvarchar](50) NULL,
-         [MiddleName] [nvarchar](50) NULL,
-         [StreetAddress] [nvarchar](50) NULL,
-         [City] [nvarchar](50) NULL,
-         [ZipCode] [char](5) NULL,
-         [State] [char](2) NULL,
-         [BirthDate] [date] NOT NULL
-         PRIMARY KEY CLUSTERED ([PatientId] ASC) ON [PRIMARY] );
+CREATE TABLE [dbo].[userdata](
+         [id] [int] IDENTITY(1,1),
+         [first_name] [nvarchar](50) NULL,
+         [last_name] [nvarchar](50) NULL,
+         [email] [nvarchar](50) NULL,
+         [gender] [nvarchar](10) NULL,
+         [ip_address] [nvarchar](50) NULL,
+         [cc] [nvarchar](50) NULL,
+         [country] [nvarchar](50) NULL,
+         [birthdate] [date] NULL,
+         [salary] [smallmoney] NULL,
+         [title] [nvarchar](50) NULL,
+         PRIMARY KEY CLUSTERED ([id] ASC) ON [PRIMARY] );
 GO
 ```
 
-Next, use the following PowerShell script to define the columns to encrypt as well as the Column Master Key (CMK).
+Next, use the following PowerShell script to configure SQL Always Encrypted:
 
 ```powershell
-TBD
+ .\configure-sqlae.ps1 -ServerName {your_server_name} -KeyUri {key_uri}
 ```
 
-Full details on available PowerShell commands for controlling Always Encrypted settings for Azure SQL Database can be found here: [Configure Always Encrypted using PowerShell](https://docs.microsoft.com/en-us/sql/relational-databases/security/encryption/configure-always-encrypted-using-powershell?view=sql-server-ver15)
+Replace `{server_name}` with the friendly name of the SQL Server instance deployed earlier and `{key_uri}` with the value from Key Vaule (i.e. https://{vault_name}.vault.azure.net/keys/{key_name}/{version})
+
+By default, this script configures the `cc` field to for Randomized encryption.
+
+> Full details on available PowerShell commands for controlling Always Encrypted settings for Azure SQL Database can be found here: [Configure Always Encrypted using PowerShell](https://docs.microsoft.com/en-us/sql/relational-databases/security/encryption/configure-always-encrypted-using-powershell?view=sql-server-ver15)
 
 Once the encryption configuration is completed, identify and document the encrypted (wrapped) value of the Column Encryption Key (CEK) for the `SSN` column.
 
@@ -120,25 +66,24 @@ Once the encryption configuration is completed, identify and document the encryp
 SELECT * from sys.column_encryption_key_values
 ```
 
-## Metadata Configuration File
+## Create Metadata Configuration File
 
-Finally, create a YAML file that represents the column data classification and add the value of the generated CEK in the `EncryptedColumnKey` field for `CEKConfidential`.
+Finally, create a YAML file that represents the column data classification and add the value of the generated CEK in the `EncryptedColumnKey` field for `cmk-userdata-pci`.
 
 ```yaml
 ColumnEncryptionInfo:
-- ColumnName: SSN
-  ColumnKeyName: CEKConfidential
-  EncryptionType: Deterministic
-  Algorithm: AEAD_AES_256_CBC_HMAC_SHA256
+- ColumnName: cc
+  ColumnKeyName: cmk-userdata-pci
+  EncryptionType: Randomized
 ColumnKeyInfo:
-- Name: CEKConfidential
+- Name: cmk-userdata-pci
   EncryptedColumnKey: 0x01B200000...
   Algorithm: RSA_OAEP
-  ColumnMasterKeyName: CMKConfidential
+  ColumnMasterKeyName: cmk-userdata-sensitive
 ColumnMasterKeyInfo:
-- Name: CMKConfidential
+- Name: cmk-userdata-sensitive
   KeyProvider: AZURE_KEY_VAULT
   KeyPath: https://[vault-name].vault.azure.net/keys/[key-name]/[key-identifier]
 ```
 
-Be sure the `KeyPath` value for `CMKConfidential` matches the actual key path in your Key Vault.
+Be sure the `KeyPath` value for `cmk-userdata-sensitive` matches the actual key path in your Key Vault.

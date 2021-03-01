@@ -357,3 +357,6 @@ MigrationBackup/
 
 # MACOS
 .DS_Store
+
+# JSON files
+*.json
