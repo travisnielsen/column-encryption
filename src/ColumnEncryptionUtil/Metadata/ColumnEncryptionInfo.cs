@@ -11,8 +11,8 @@ namespace ColumnEncryption.Util.Metadata
         /// <summary> Key name that protects column data </summary>
         public string ColumnKeyName { get; set; }
 
-        /// <summary> Type of encryption to be performed on the data 1 - Deterministic, 2 - Random </summary>
-        // public SqlClientEncryptionType EncryptionType { get; set; }
+        /// <summary> Type of encryption to be performed on the data 1 - Deterministic, 2 - Randomized </summary>
+        public string EncryptionType { get; set; }
 
         /// <summary> Algorithm to be used to encrypt column data </summary>
         public string Algorithm { get; set; }

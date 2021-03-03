@@ -4,36 +4,47 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Microsoft.Data.Encryption.FileEncryption;
 
 namespace ColumnEncryption.Util.DataProviders
 {
     /// <summary> Handles writing data to delimited files </summary>
-    public class CSVDataWriter : IDataWriter, IDisposable
+    public class CSVDataWriter : IColumnarDataWriter, IDisposable
     {
         private readonly CsvWriter csvWriter;
+        private IList<FileEncryptionSettings> encryptionSettings;
+
+        public IList<FileEncryptionSettings> FileEncryptionSettings
+        {
+            get
+            {
+                return encryptionSettings;
+            }
+        }
 
         /// <summary> Initializes a new instances of <see cref="CSVDataWriter"/> class </summary>
         /// <param name="writer"> Text writer to the destination file </param>
-        public CSVDataWriter(StreamWriter writer)
+        public CSVDataWriter(StreamWriter writer, IList<FileEncryptionSettings> settings)
         {
             this.csvWriter = new CsvWriter(writer);
+            this.encryptionSettings = settings;
         }
 
         /// <inheritdoc/>
-        public void Write(IEnumerable<ColumnData> columnData)
+        public void Write(IEnumerable<IColumn> columnData)
         {
             var headers = columnData.Select(c => c.Name).ToList();
 
             headers.ForEach(h => this.csvWriter.WriteField(h));
             this.csvWriter.NextRecord();
 
-            var recordCount = columnData?.FirstOrDefault()?.Data?.Count;
+            var recordCount = columnData?.FirstOrDefault()?.Data.Length;
 
             for (int i = 0; i < recordCount; i++)
             {
                 foreach (var column in columnData)
                 {
-                    this.csvWriter.WriteField(column.Data[i]);
+                    this.csvWriter.WriteField(column.Data.GetValue(i));
                 }
                 this.csvWriter.NextRecord();
             }
@@ -73,6 +84,8 @@ namespace ColumnEncryption.Util.DataProviders
             // TODO: uncomment the following line if the finalizer is overridden above.
             // GC.SuppressFinalize(this);
         }
-        #endregion
+
+        # endregion
+
     }
 }

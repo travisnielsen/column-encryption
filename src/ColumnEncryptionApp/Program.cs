@@ -2,10 +2,13 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
+using System.Text;
 using System.Configuration;
 
 using ColumnEncryption.Util.Auth;
+using ColumnEncryption.Util.Common;
 using ColumnEncryption.Util.Config;
+using ColumnEncryption.Util.Metadata;
 using ColumnEncryption.Util.DataProviders;
 
 using Azure.Core;
@@ -28,16 +31,6 @@ namespace ColumnEncryption.App
 
     public class Program
     {
-        private const string APP_SETTING_ADLS_ACCOUNT_NAME = "adlsAccountName";
-        private const string APP_SETTING_ADLS_CONTAINER_PATH = "adlsContainerPath";
-        private const string APP_SETTING_TENANT_ID = "tenantId";
-        private const string APP_SETTING_APPLICATION_ID = "appId";
-        private const string APP_SETTING_APP_REDIRECT_URI = "appRedirectUri";
-        private const string APP_SETTING_APPLICATION_NAME = "appName";
-        private const string APP_SETTING_APPLICATION_VERSION = "appVersion";
-        private const string APP_SETTING_AUTH_ENDPOINT = "authEndpointUrl";
-
-        public const string AzureKeyVaultKeyPath = "https://trniel.vault.azure.net/keys/contoso-sensitive/729cb571a1c3494a9c86ae2613bdd017";
 
         // New Token Credential to authenticate to Azure interactively.
         public static readonly TokenCredential TokenCredential = new InteractiveBrowserCredential();
@@ -45,21 +38,13 @@ namespace ColumnEncryption.App
         // Azure Key Vault provider that allows client applications to access a key encryption key is stored in Microsoft Azure Key Vault.
         public static readonly EncryptionKeyStoreProvider azureKeyProvider = new AzureKeyVaultKeyStoreProvider (TokenCredential);
 
-        // Represents the key encryption key that encrypts and decrypts the data encryption key
-        public static readonly KeyEncryptionKey keyEncryptionKey = new KeyEncryptionKey ("KEK", AzureKeyVaultKeyPath, azureKeyProvider);
-
-        // Represents the encryption key that encrypts and decrypts the data items
-        public static readonly ProtectedDataEncryptionKey encryptionKey = new ProtectedDataEncryptionKey ("DEK", keyEncryptionKey);
-
         [Argument(0, Description = "The command to execute.  'encrypt' or 'decrypt'.")]
         [Required]
         public string Command { get; }
 
-        /*
         [Option(Description = "The path to the input data.")]
         [Required]
         public string DataFilePath { get; }
-        */
 
         [Option(Description = "The output target, such as local file system or ADLS.  Default is 'LOCAL'.",
                 LongName = "output-target",
@@ -75,7 +60,11 @@ namespace ColumnEncryption.App
 
         private void OnExecute()
         {
-            // string outPath = OutputFilePath ?? (Path.GetFileNameWithoutExtension(DataFilePath) + "_output" + Path.GetExtension(DataFilePath));
+            string outPath = OutputFilePath ?? (Path.GetFileNameWithoutExtension(DataFilePath) + "_output" + Path.GetExtension(DataFilePath));
+
+            // load configuration file
+            YamlConfigReader configFile = new YamlConfigReader(".\\resources\\config.yaml");
+            DataProtectionConfig protectionConfig = configFile.Read();
 
             // open input and output file streams
             Stream inputFile = File.OpenRead (".\\resources\\userdata1.parquet");
@@ -83,16 +72,25 @@ namespace ColumnEncryption.App
 
             // Create reader
             using ParquetFileReader reader = new ParquetFileReader (inputFile);
-
+            
             // Copy source settings as target settings
             List<FileEncryptionSettings> writerSettings = reader.FileEncryptionSettings
                 .Select (s => Copy (s))
                 .ToList ();
 
-            // Modify a few column settings
-            writerSettings[0] = new FileEncryptionSettings<DateTimeOffset?> (encryptionKey, SqlSerializerFactory.Default.GetDefaultSerializer<DateTimeOffset?> ());
-            writerSettings[3] = new FileEncryptionSettings<string> (encryptionKey, EncryptionType.Deterministic, new SqlVarCharSerializer (size: 255));
-            writerSettings[10] = new FileEncryptionSettings<double?> (encryptionKey, StandardSerializerFactory.Default.GetDefaultSerializer<double?> ());
+            // 'cc' field
+            /*
+            ColumnEncryptionInfo encryptionInfo = protectionConfig.ColumnEncryptionInfo.First(x => x.ColumnName == "cc");
+            string dekName = encryptionInfo.ColumnKeyName;
+
+            ColumnKeyInfo dekInfo = protectionConfig.ColumnKeyInfo.First(x => x.Name == encryptionInfo.ColumnKeyName);
+            byte[] dekBytes = Converter.FromHexString(dekInfo.EncryptedColumnKey);
+
+            ColumnMasterKeyInfo kekInfo = protectionConfig.ColumnMasterKeyInfo.First(x => x.Name == dekInfo.ColumnMasterKeyName);
+            KeyEncryptionKey kek = new KeyEncryptionKey(kekInfo.Name, kekInfo.KeyPath, azureKeyProvider);
+
+            writerSettings[7] = new FileEncryptionSettings<string> (new ProtectedDataEncryptionKey(dekName, kek, dekBytes), EncryptionType.Randomized, new SqlVarCharSerializer (size: 255));
+
 
             // Create and pass the target settings to the writer
             using ParquetFileWriter writer = new ParquetFileWriter (outputFile, writerSettings);
@@ -102,8 +100,9 @@ namespace ColumnEncryption.App
             cryptographer.Transform ();
 
             Console.WriteLine ($"Parquet File processed successfully. Verify output file contains encrypted data.");
+            */
 
-            /*
+            
             using (CSVDataReader csvDataReader = new CSVDataReader(new StreamReader(DataFilePath)))
             using (CSVDataWriter csvDataWriter = new CSVDataWriter(new StreamWriter(outPath)))
             {
@@ -180,7 +179,6 @@ namespace ColumnEncryption.App
                 }
             );
         }
-
 
     }
 }

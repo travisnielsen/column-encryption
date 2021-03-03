@@ -13,6 +13,9 @@
     <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="5.2.7" />
     <PackageReference Include="System.Runtime" Version="4.3.1" />
     <PackageReference Include="YamlDotNet" Version="9.1.4" />
+    <PackageReference Include="Microsoft.Data.Encryption.Cryptography" Version="0.1.0-pre" />
+    <PackageReference Include="Microsoft.Data.Encryption.FileEncryption" Version="0.1.0-pre" />
+    <PackageReference Include="Microsoft.Data.Encryption.AzureKeyVaultProvider" Version="0.1.0-pre" />
   </ItemGroup>
 
 </Project>

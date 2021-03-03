@@ -12,13 +12,11 @@
     <None Remove="EncryptionProviders\**" />
   </ItemGroup>
   -->
-
-  <!--
+  
   <ItemGroup>
-    <None Remove="TestConfig.yaml" />
-    <None Remove="TestData.csv" />
+    <None Remove="config.yaml" />
+    <None Remove="data.csv" />
   </ItemGroup>
--->
 
   <ItemGroup>
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.5.1" />
@@ -33,15 +31,13 @@
     <ProjectReference Include="..\ColumnEncryptionUtil\ColumnEncryption.Util.csproj" />
   </ItemGroup>
 
-  <!--
   <ItemGroup>
-    <EmbeddedResource Include="TestConfig.yaml">
+    <EmbeddedResource Include="config.yaml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
-    <EmbeddedResource Include="TestData.csv">
+    <EmbeddedResource Include="data.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
-  -->
 
 </Project>
