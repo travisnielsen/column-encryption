@@ -1,5 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
-
+﻿
 namespace ColumnEncryption.Util.Metadata
 {
     /// <summary> Holds all encryption related information for a column </summary>

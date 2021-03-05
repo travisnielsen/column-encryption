@@ -16,13 +16,12 @@ namespace ColumnEncryption.Util.DataProviders
     public class CSVDataWriter : CSVData, IColumnarDataWriter, IDisposable
     {
         private readonly CsvWriter csvWriter;
-        private IList<FileEncryptionSettings> encryptionSettings;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
             get
             {
-                return encryptionSettings;
+                return this.encryptionSettings;
             }
         }
 

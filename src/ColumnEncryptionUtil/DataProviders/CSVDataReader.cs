@@ -18,9 +18,14 @@ namespace ColumnEncryption.Util.DataProviders
     public class CSVDataReader : CSVData, IColumnarDataReader, IDisposable
     {
         private readonly CsvReader csvReader;
-        private IList<FileEncryptionSettings> encryptionSettings;
 
-        public IList<FileEncryptionSettings> FileEncryptionSettings { get; set; }
+        public IList<FileEncryptionSettings> FileEncryptionSettings
+        {
+            get
+            {
+                return this.encryptionSettings;
+            }
+        }
 
         public string[] Header
         {
@@ -40,7 +45,7 @@ namespace ColumnEncryption.Util.DataProviders
             this.encryptionSettings = new List<FileEncryptionSettings>();
             this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
             header = ReaderHeaderIfRequired();
-            FileEncryptionSettings = LoadFileEncryptionSettings(config, encrypted);
+            this.encryptionSettings = LoadFileEncryptionSettings(config, encrypted);
         }
 
         public IEnumerable<IEnumerable<IColumn>> Read()

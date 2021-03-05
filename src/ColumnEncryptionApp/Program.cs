@@ -107,13 +107,12 @@ namespace ColumnEncryption.App
             try
             {
                 cryptographer.Transform ();
+                Console.WriteLine ($"File processed successfully. Verify output file contains encrypted data.");
             }
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
             }
-            
-            Console.WriteLine ($"File processed successfully. Verify output file contains encrypted data.");
             
         }
 

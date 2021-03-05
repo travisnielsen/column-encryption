@@ -14,6 +14,7 @@ namespace ColumnEncryption.Util.DataProviders
         protected EncryptionKeyStoreProvider azureKeyProvider;
 
         protected KeyEncryptionKey defaultKEK;
+        protected IList<FileEncryptionSettings> encryptionSettings;
 
         protected IList<FileEncryptionSettings> LoadFileEncryptionSettings(DataProtectionConfig config, bool encrypted)
         {
