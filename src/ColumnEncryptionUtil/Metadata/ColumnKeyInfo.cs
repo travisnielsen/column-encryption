@@ -1,6 +1,4 @@
-﻿using ColumnEncryption.Util.Encoders;
-using System;
-
+﻿
 namespace ColumnEncryption.Util.Metadata
 {
     /// <summary> Holds all data related to the column key </summary>

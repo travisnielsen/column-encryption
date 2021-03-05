@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Data.Encryption.FileEncryption;
 
 namespace ColumnEncryption.Util.Data
@@ -7,27 +8,26 @@ namespace ColumnEncryption.Util.Data
     /// <summary> Holds all information about a column and its data </summary>
     public class ColumnData : IColumn
     {
-        /// <summary> Column Name </summary>
-        // public string Name { get; }
-
-        /// <summary>
-        /// Data type of data within this column.
-        /// Defaults to string if not specified.
-        /// </summary>
-        // public Type Type { get; }
-
-        /// <summary> Actual column data </summary>
-        public IList<object> DataList { get; set; }
+        private List<object> _dataList { get; set; }
 
         public string Name { get; set; }
         public int Index { get; set; }
         public Type DataType { get; set; }
-        public Array Data { get; set; }
+        public Array Data
+        {
+            get
+            {
+                return _dataList.ToArray();
+            }
+            set
+            {
+                Data = value;
+            }
+        }
 
 
         /// <summary> Initializes a new instance of <see cref="ColumnData"/> </summary>
         /// <param name="Name"> Column name </param>
-        
         public ColumnData(string Name) : this(Name, typeof(string))
         {
         }
@@ -43,8 +43,13 @@ namespace ColumnEncryption.Util.Data
             this.Name = name;
             this.DataType = type;
             // this.Data = new Array;
-            this.DataList = new List<object>();
+            _dataList = new List<object>();
         }
         
+        public void AddColumnRecord(object o)
+        {
+            _dataList.Add(o);
+        }
+
     }
 }

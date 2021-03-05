@@ -3,60 +3,78 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ColumnEncryption.Util.Common;
 using ColumnEncryption.Util.Data;
+using ColumnEncryption.Util.Metadata;
 using Microsoft.Data.Encryption.FileEncryption;
+using Microsoft.Data.Encryption.Cryptography;
+using Microsoft.Data.Encryption.AzureKeyVaultProvider;
+using Azure.Core;
+using Microsoft.Data.Encryption.Cryptography.Serializers;
 
 namespace ColumnEncryption.Util.DataProviders
 {
     /// <summary> Handles reading data from delimited files </summary>
-    public class CSVDataReader : IColumnarDataReader, IDisposable
+    public class CSVDataReader : CSVData, IColumnarDataReader, IDisposable
     {
         private readonly CsvReader csvReader;
+        private IList<FileEncryptionSettings> encryptionSettings;
 
-        private string[] header;
+        public IList<FileEncryptionSettings> FileEncryptionSettings { get; set; }
+
+        public string[] Header
+        {
+            get
+            {
+                return this.header;
+            }
+        }
 
         /// <summary> Initializes a new instance of <see cref="CSVDataReader"/> class </summary>
         /// <param name="reader"> Text reader of the source </param>
-        public CSVDataReader(StreamReader reader)
+        /// <param name="credential">A tokencredential for authenticating to Key Vault</param>
+        /// <param name="encrypted">Indicates if the current file has encryption or not</param>
+        public CSVDataReader(StreamReader reader, DataProtectionConfig config, TokenCredential credential, bool encrypted)
         {
             this.csvReader = new CsvReader(reader, true);
+            this.encryptionSettings = new List<FileEncryptionSettings>();
+            this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
+            header = ReaderHeaderIfRequired();
+            FileEncryptionSettings = LoadFileEncryptionSettings(config, encrypted);
         }
 
-        /// <inheritdoc/>
-        /*
-        public IEnumerable<ColumnData> Read()
+        public IEnumerable<IEnumerable<IColumn>> Read()
         {
             this.ReaderHeaderIfRequired();
-            var columns = header.Select(n => new ColumnData(n)).ToArray();
+            IEnumerable<ColumnData> columns = header.Select(n => new ColumnData(n)).ToArray();
 
             while (this.csvReader.Read())
             {
-                var row = Enumerable.Range(0, columns.Length).Select(i => this.csvReader.GetField(i)).ToArray();
-                for (int i = 0; i < columns.Length; i++)
+                var row = Enumerable.Range(0, columns.Count()).Select(i => this.csvReader.GetField(i)).ToArray();
+                for (int i = 0; i < columns.Count(); i++)
                 {
-                    columns[i].Index = i;
-                    columns[i].DataList.Add(row[i]);
+                    columns.ElementAt(i).Index = i;
+                    columns.ElementAt(i).AddColumnRecord(row[i]);
                 }
             }
-
-            return columns;
+            // var result = (IEnumerable<IEnumerable<IColumn>>)(columns as IColumn);
+            var result = columns as IEnumerable<IColumn>;
+            var result3 = new List<IEnumerable<IColumn>>();
+            result3.Add(result);
+            return result3;
         }
-        */
 
-        private void ReaderHeaderIfRequired()
+        private string[] ReaderHeaderIfRequired()
         {
             // NOT thread safe
-            if (this.header != null) return;
-
+            if (header != null) return header;
             this.csvReader.Read();
             this.csvReader.ReadHeader();
-            this.header = csvReader.Context.HeaderRecord;
+            return csvReader.Context.HeaderRecord;
         }
 
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
-
-        public IList<FileEncryptionSettings> FileEncryptionSettings => throw new NotImplementedException();
 
         protected virtual void Dispose(bool disposing)
         {
@@ -90,31 +108,6 @@ namespace ColumnEncryption.Util.DataProviders
             // GC.SuppressFinalize(this);
         }
 
-        public IEnumerable<IEnumerable<IColumn>> Read()
-        {
-            this.ReaderHeaderIfRequired();
-            IEnumerable<ColumnData> columns = header.Select(n => new ColumnData(n)).ToArray();
-
-            while (this.csvReader.Read())
-            {
-                var row = Enumerable.Range(0, columns.Count()).Select(i => this.csvReader.GetField(i)).ToArray();
-                for (int i = 0; i < columns.Count(); i++)
-                {
-                    columns.ElementAt(i).Index = i;
-                    columns.ElementAt(i).DataList.Add(row[i]);
-                }
-            }
-
-            // TODO: I'm sure there's a much better way to handle this
-            foreach (ColumnData column in columns)
-            {
-                column.Data = column.DataList.ToArray();
-                column.DataList = null;
-            }
-
-            return (IEnumerable<IEnumerable<IColumn>>)columns;
-            
-        }
         #endregion
     }
 }
