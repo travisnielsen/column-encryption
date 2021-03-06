@@ -362,5 +362,5 @@ MigrationBackup/
 *.json
 
 # output files
-data-*.csv
+userdata-*.csv
 userdata-*.parquet

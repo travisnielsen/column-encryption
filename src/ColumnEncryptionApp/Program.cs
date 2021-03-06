@@ -83,8 +83,8 @@ namespace ColumnEncryption.App
             // For encryption operations, we're going to remove output settings
 
             // open input and output file streams
-            // Stream inputFile = File.OpenRead (".\\resources\\userdata1.parquet");
-            // Stream outputFile = File.OpenWrite (".\\resources\\userdata1-out.parquet");
+            // Stream inputFile = File.OpenRead (".\\resources\\userdata.parquet");
+            // Stream outputFile = File.OpenWrite (".\\resources\\userdata.parquet");
             Stream outputFile = File.OpenWrite (outputFileName);
 
             // Create reader

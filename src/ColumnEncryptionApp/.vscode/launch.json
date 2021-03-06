@@ -11,8 +11,8 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryption.App.dll",
-            "args": ["encrypt", "-m config.yaml", "-d data.csv"],
-            // "args": ["decrypt", "-m config.yaml", "-d data-encrypted.csv"],
+            "args": ["encrypt", "-m config.yaml", "-d userdata.csv"],
+            // "args": ["decrypt", "-m config.yaml", "-d userdata-encrypted.csv"],
             "cwd": "${workspaceFolder}",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
