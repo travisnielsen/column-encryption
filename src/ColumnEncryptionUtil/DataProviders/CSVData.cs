@@ -12,7 +12,6 @@ namespace ColumnEncryption.Util.DataProviders
     {
         protected string[] header;
         protected EncryptionKeyStoreProvider azureKeyProvider;
-
         protected KeyEncryptionKey defaultKEK;
         protected IList<FileEncryptionSettings> encryptionSettings;
 
@@ -35,6 +34,7 @@ namespace ColumnEncryption.Util.DataProviders
                     KeyEncryptionKey kek = new KeyEncryptionKey(kekInfo.Name, kekInfo.KeyPath, azureKeyProvider);
 
                     EncryptionType encryptionType = EncryptionType.Plaintext;
+                    
                     if (encrypted)
                     {
                         if (encryptionInfo.EncryptionType.ToLower() == "randomized")
