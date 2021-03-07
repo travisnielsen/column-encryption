@@ -1,6 +1,6 @@
 param region string = 'centralus'
 param appPrefix string = 'mdedemo'
-param storageContainerName string = 'userinfo'
+param storageContainerName string = 'userdata'
 param cekName string = 'mde-sensitive'
 param userObjectId string
 param tags object = {
@@ -31,7 +31,74 @@ resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@20
   ]
 }
 
-// Function App
+/*
+Function App
+*/
+
+resource appServicePlan 'Microsoft.Web/serverFarms@2020-06-01' = {
+  name: '${uniqueString(resourceGroup().id)}-plan'
+  location: resourceGroup().location
+  kind: 'elastic'
+  sku: {
+    name: 'EP1'
+    tier: 'ElasticPremium'
+  }
+  properties: {
+    maximumElasticWorkerCount: 20
+  }
+  tags: tags
+}
+
+resource functionApp 'Microsoft.Web/sites@2020-06-01' = {
+  name: '${uniqueString(resourceGroup().id)}-functionapp'
+  location: resourceGroup().location
+  kind: 'functionapp'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    enabled: true
+    hostNameSslStates: [
+      {
+        name: '${uniqueString(resourceGroup().id)}.azurewebsites.net'
+        sslState: 'Disabled'
+        hostType: 'Standard'
+      }
+      {
+        name: '${uniqueString(resourceGroup().id)}.scm.azurewebsites.net'
+        sslState: 'Disabled'
+        hostType: 'Standard'
+      }
+    ]
+    serverFarmId: appServicePlan.id
+    siteConfig: {
+      appSettings: [
+        {
+          name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
+        }
+        {
+          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${listKeys(storageAccount.id, storageAccount.apiVersion).keys[0].value}'
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'dotnet-isolated'
+        }
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~3'
+        }
+        {
+          name: 'WEBSITE_NODE_DEFAULT_VERSION'
+          value: '~12'
+        }
+      ]
+    }
+    httpsOnly: true
+  }
+  tags: tags
+}
 
 
 /*
@@ -40,6 +107,9 @@ Key Vault
 resource keyvault 'Microsoft.KeyVault/vaults@2019-09-01' = {
   name: 'akv${uniqueString(resourceGroup().id)}' // AKV name must start with a letter
   location: resourceGroup().location
+  dependsOn: [
+    functionApp
+  ]
   properties: {
     tenantId: subscription().tenantId
     sku: {
@@ -50,6 +120,24 @@ resource keyvault 'Microsoft.KeyVault/vaults@2019-09-01' = {
       {
         tenantId: subscription().tenantId
         objectId: userObjectId
+        permissions: {
+          keys: [
+            'get'
+            'list'
+            'sign'
+            'unwrapKey'
+            'verify'
+            'wrapKey'
+          ]
+          secrets: [
+          ]
+          certificates: [
+          ]
+        }
+      }
+      {
+        tenantId: subscription().tenantId
+        objectId: functionApp.identity.principalId
         permissions: {
           keys: [
             'get'

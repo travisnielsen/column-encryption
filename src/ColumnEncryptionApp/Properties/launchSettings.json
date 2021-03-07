@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "AlwaysProtected.App": {
-      "commandName": "Project",
-      "commandLineArgs": "decrypt -m config.yaml -d data-encrypted.csv -o data-decrypted.csv"
-    }
-  }
-}

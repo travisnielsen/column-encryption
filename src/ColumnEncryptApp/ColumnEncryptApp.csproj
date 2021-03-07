@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <!--
+  <ItemGroup>
+    <Compile Remove="EncryptionProviders\**" />
+    <EmbeddedResource Remove="EncryptionProviders\**" />
+    <None Remove="EncryptionProviders\**" />
+  </ItemGroup>
+  -->
+  
+  <ItemGroup>
+    <None Remove="config.yaml" />
+    <None Remove="userdata.csv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.5.1" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
+    <PackageReference Include="Azure.Identity" Version="1.2.2" />
+    <PackageReference Include="Microsoft.Data.Encryption.Cryptography" Version="0.1.0-pre" />
+    <PackageReference Include="Microsoft.Data.Encryption.FileEncryption" Version="0.1.0-pre" />
+    <PackageReference Include="Microsoft.Data.Encryption.AzureKeyVaultProvider" Version="0.1.0-pre" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ColumnEncrypt\ColumnEncrypt.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="config.yaml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="userdata.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

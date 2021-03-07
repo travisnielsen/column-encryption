@@ -4,8 +4,8 @@ select * from sys.column_encryption_keys
 select * from sys.column_encryption_key_values
 
 SELECT * FROM userdata
--- DELETE from userdata where PatientId > 5
 
+-- DELETE from userdata where ID > 0
 
 -- USER INSERT TEST w/ parameters
 DECLARE @firstname nvarchar(50) = 'Alice'
