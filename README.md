@@ -1,11 +1,8 @@
 # Introduction
 
-The project describes an Azure-native topology for applying field (column) level encryption for a variety of scenarios across an organization's data estate. It includes sample code and documentation for evaluation purposes.
+The project describes an Azure-native topology for applying column-level encryption for a variety of scenarios across an organization's data estate. It includes sample code and documentation for evaluation purposes.
 
-The core tenant of this project is the use of two encryption libraries that have been in production with Microsoft for several years:
-
-1. The implementation of the `AEAD_AES_256_CBC_HMAC_SHA256` algorithm [within the open sourced versions of SQL Client](https://github.com/dotnet/SqlClient/tree/master/src/Microsoft.Data.SqlClient/netcore/src/Microsoft/Data/SqlClient).
-2. The [Always Encrypted Azure Key Vault Provider](https://docs.microsoft.com/en-us/dotnet/api/microsoft.data.sqlclient.alwaysencrypted.azurekeyvaultprovider?view=akvprovider-dotnet-core-1.1) for managing encryption and decryption of column master keys via Azure Key Vault.
+The basis of this project is the newly published [Microsoft Data Encryption SDK](https://github.com/Azure/microsoft-data-encryption-sdk) (MDE), which provides consistent and portable tools for applying cryptography to meet data protection needs. These tools are full compatible with the existing implementation of [Always Encrypted](https://docs.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-database-engine?view=azuresqldb-current), which is part of SQL Server.
 
 Because these libraries are portable, a standardized and compatible approach to encryption can extend beyond just supported data engines such as Azure SQL Database. For example, records with sensitive columns encrypted via SQL Always Encrypted can be streamed as events as part of a change data capture (CDC) feed and subsequently decrypted and procecessed elsewhere by an authorized microservice.
 
@@ -17,9 +14,9 @@ The model can be used to support three principal scenarios: (1) migration from o
 
 ## Components
 
-### Encryption SDK
+### Microsoft Data Encryption (MDE) SDK
 
-An encryption SDK will be used to perform cryptographic operations that are part of data flows outside of supported data platform clients. An early prototype of this SDK, implemented in .NET Core, is included as part of this repository. This SDK is intended to be pluggable in order to support a various enterprise management scenarios.
+The [MDE SDK]((https://github.com/Azure/microsoft-data-encryption-sdk)) is in preview and currently supports .NET 5. It provides the foundation for most of the samples in this repositry.
 
 ### Encryption Metadata
 
@@ -54,7 +51,7 @@ If the CEK is not present in the file, the prototype SDK will generate one and e
 
 ### Supported Data Engines
 
-As previously mentioned, the use of the Encryption SDK will be fully compatible with native encryption support already available in Azure SQL Database. This provides seamless support for data processing is it flows in and out from various systems. [Sample Azure Functions](src/ColumnEncryptionFunctions/README.md) are provided in this repository that illustrate this capability. It should be noted that updates to the encryption metadata must be pushed to these systems as well via DevOps automation.
+As previously mentioned, the use of the MDE SDK is fully compatible with native encryption support already available in Azure SQL Database. This provides seamless support for data processing is it flows in and out from various systems. [Sample Azure Functions](src/ColumnEncryptionFunctions/README.md) are provided in this repository that illustrate this capability. It should be noted that updates to the encryption metadata must be pushed to these systems as well via DevOps automation.
 
 ### Automation (DevOps)
 
