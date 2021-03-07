@@ -1,34 +1,92 @@
 {
   "folders": [
     {
-      // Source code
-      "name": "ColumnEncryption.App",
-      "path": "src/ColumnEncryptionApp"
+      "name": "ColumnEncrypt.App",
+      "path": "src/ColumnEncryptApp"
     },
     {
-      // Source code
-      "name": "ColumnEncryption.Functions",
-      "path": "src/ColumnEncryptionFunctions" 
+      "name": "ColumnEncrypt.Functions",
+      "path": "src/ColumnEncryptFunctions"
+    },    
+    {
+      "name": "ColumnEncrypt",
+      "path": "src/ColumnEncrypt"
     },
     {
-      // Source code
-      "name": "Microsoft.ColumnEncryption",
-      "path": "src/Microsoft.ColumnEncryption" 
-    },
-    {
-      // Source code
-      "name": "SQL.FLE.Demo.Crypto",
-      "path": "src/SQL.FLE.Demo.Crypto" 
-    },
-    {
-      // Documentation
       "name": "docs",
-      "path": "docs" 
+      "path": "docs"
     },
     {
-      // Scripts
       "name": "scripts",
       "path": "scripts"
     }
-  ]
+  ],
+  "tasks": {
+    "tasks": [
+      {
+        "label": "clean",
+        "command": "dotnet",
+        "args": [
+          "clean",
+          "/property:GenerateFullPaths=true",
+          "/consoleloggerparameters:NoSummary"
+        ],
+        "type": "process",
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "label": "build",
+        "command": "dotnet",
+        "args": [
+          "build",
+          "/property:GenerateFullPaths=true",
+          "/consoleloggerparameters:NoSummary"
+        ],
+        "type": "process",
+        "dependsOn": "clean",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "label": "clean release",
+        "command": "dotnet",
+        "args": [
+          "clean",
+          "--configuration",
+          "Release",
+          "/property:GenerateFullPaths=true",
+          "/consoleloggerparameters:NoSummary"
+        ],
+        "type": "process",
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "label": "publish",
+        "command": "dotnet",
+        "args": [
+          "publish",
+          "--configuration",
+          "Release",
+          "/property:GenerateFullPaths=true",
+          "/consoleloggerparameters:NoSummary"
+        ],
+        "type": "process",
+        "dependsOn": "clean release",
+        "problemMatcher": "$msCompile"
+      },
+      {
+        "type": "func",
+        "dependsOn": "build",
+        "options": {
+          "cwd": "${workspaceFolder}/bin/Debug/net5.0"
+        },
+        "command": "host start",
+        "isBackground": true,
+        "problemMatcher": "$func-watch"
+      }
+    ]
+  }
 }
