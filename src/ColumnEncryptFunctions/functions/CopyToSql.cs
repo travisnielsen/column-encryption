@@ -14,7 +14,6 @@ namespace ColumnEncryption.Functions
         [Function("CopyToSql")]
         public static void Run([BlobTrigger("userdata/{csvName}", Connection = "AzureWebJobsStorage")]string csvData, string csvName, FunctionContext context)
         {
-            context.Items.FirstOrDefault();
             var logger = context.GetLogger("CopyToSql");
             logger.LogInformation($"CopyToSql Function processing blob\n name:{csvName} \n Size: {csvData.Length} Bytes");
             var connString = System.Environment.GetEnvironmentVariable("SQL_CONNECTION");
