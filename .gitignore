@@ -359,7 +359,8 @@ MigrationBackup/
 .DS_Store
 
 # JSON files
-*.json
+# *.json
+local.settings.json
 
 # output files
 userdata-*.csv

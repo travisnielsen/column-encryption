@@ -9,6 +9,7 @@ using Azure.Core;
 using Microsoft.Data.Encryption.Cryptography;
 using Microsoft.Data.Encryption.AzureKeyVaultProvider;
 using ColumnEncrypt.Metadata;
+using System.Globalization;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -29,7 +30,7 @@ namespace ColumnEncrypt.DataProviders
         /// <param name="writer"> Text writer to the destination file </param>
         public CSVDataWriter(StreamWriter writer, DataProtectionConfig config, TokenCredential credential, string[] header, bool encrypted)
         {
-            this.csvWriter = new CsvWriter(writer);
+            this.csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
             this.header = header;
             this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
             this.encryptionSettings = LoadFileEncryptionSettings(config, encrypted);

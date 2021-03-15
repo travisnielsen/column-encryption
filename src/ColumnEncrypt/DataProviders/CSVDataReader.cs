@@ -8,6 +8,7 @@ using ColumnEncrypt.Metadata;
 using Microsoft.Data.Encryption.FileEncryption;
 using Microsoft.Data.Encryption.AzureKeyVaultProvider;
 using Azure.Core;
+using System.Globalization;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -38,7 +39,7 @@ namespace ColumnEncrypt.DataProviders
         /// <param name="encrypted">Indicates if the current file has encryption or not</param>
         public CSVDataReader(StreamReader reader, DataProtectionConfig config, TokenCredential credential, bool encrypted)
         {
-            this.csvReader = new CsvReader(reader, true);
+            this.csvReader = new CsvReader(reader, CultureInfo.InvariantCulture, true);
             this.encryptionSettings = new List<FileEncryptionSettings>();
             this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
             header = ReaderHeaderIfRequired();
@@ -49,7 +50,7 @@ namespace ColumnEncrypt.DataProviders
         /// <param name="reader"> Text reader of the source </param>
         public CSVDataReader(StreamReader reader)
         {
-            this.csvReader = new CsvReader(reader, true);
+            this.csvReader = new CsvReader(reader, CultureInfo.InvariantCulture, true);
             header = ReaderHeaderIfRequired();
         }
 
@@ -80,7 +81,7 @@ namespace ColumnEncrypt.DataProviders
             if (header != null) return header;
             this.csvReader.Read();
             this.csvReader.ReadHeader();
-            return csvReader.Context.HeaderRecord;
+            return csvReader.HeaderRecord;
         }
 
         #region IDisposable Support

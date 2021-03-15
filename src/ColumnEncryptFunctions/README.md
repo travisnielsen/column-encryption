@@ -10,7 +10,7 @@ This is a set of Azure Functions that utilize the SQL Always Encrypted libraries
 Be sure your environment meets the following conditions:
 
 1. You have completed the Azure [deployment and configuration steps](../../docs/configure-azure.md) for the SQL database, Azure Key Vault, and a Service Principal
-2. [.Net Core 3.1 SDK](https://dotnet.microsoft.com/download/dotnet-core/3.1) installed
+2. [.NET 5 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) installed
 3. Visual Studio Code with the [Azure Functions extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-azurefunctions) configured
 
 ## Setup and Debug (local)
@@ -19,22 +19,20 @@ To run these functions locally, create a `local.settings.json` in the Functions 
 
 ```json
 {
-    "IsEncrypted": false,
-    "Values": {
-      "AzureWebJobsStorage": "",
-      "AzureServicesAuthConnectionString": "RunAs=App;AppId={appId};TenantId={tenant};AppKey={password}",
-      "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-      "FUNCTIONS_EXTENSION_VERSION": "~3",
-      "SQL_CONNECTION": ""
-    }
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FUNCTIONS_EXTENSION_VERSION": "~3",
+    "SQL_CONNECTION": ""
   }
+}
 ```
 
 Populate the following values to match the following items you created during the Azure setup:
 
 * **AzureWebJobsStorage**: Matches the value in the **Configuration** section of the Function App
-* **AzureServicesAuthConnectionString**: Where `{appId}`, `{tenant}`, and `{password}` with the output from the Service Principal creation steps
-* **SQL_CONNECTION**: Equals the connection string to the Clinics database
+* **SQL_CONNECTION**: Equals the connection string to the test database
 
 > **NOTE:** Information contained within this file is sensitive and should be used only for development and testing purposes. Contents of this file should never be shared. By deafult, this file is exempted from Git in order to prevent it from being added to source code repositories.
 
