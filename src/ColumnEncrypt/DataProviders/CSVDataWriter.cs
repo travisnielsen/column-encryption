@@ -33,7 +33,8 @@ namespace ColumnEncrypt.DataProviders
             this.csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
             this.header = header;
             this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
-            this.encryptionSettings = LoadFileEncryptionSettings(config, encrypted);
+            this.isEncrypted = encrypted;
+            this.encryptionSettings = LoadFileEncryptionSettings(config);
         }
 
         /// <inheritdoc/>

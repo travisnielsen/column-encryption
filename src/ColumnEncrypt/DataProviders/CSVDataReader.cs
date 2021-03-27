@@ -9,6 +9,7 @@ using Microsoft.Data.Encryption.FileEncryption;
 using Microsoft.Data.Encryption.AzureKeyVaultProvider;
 using Azure.Core;
 using System.Globalization;
+using ColumnEncrypt.Util;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -16,6 +17,8 @@ namespace ColumnEncrypt.DataProviders
     public class CSVDataReader : CSVData, IColumnarDataReader, IDisposable
     {
         private readonly CsvReader csvReader;
+
+        private readonly DataProtectionConfig protectionConfig;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
@@ -43,7 +46,9 @@ namespace ColumnEncrypt.DataProviders
             this.encryptionSettings = new List<FileEncryptionSettings>();
             this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
             header = ReaderHeaderIfRequired();
-            this.encryptionSettings = LoadFileEncryptionSettings(config, encrypted);
+            this.protectionConfig = config;
+            this.isEncrypted = encrypted;
+            this.encryptionSettings = LoadFileEncryptionSettings(config);
         }
 
         /// <summary> Initializes a new instance of <see cref="CSVDataReader"/> class </summary>
@@ -65,10 +70,20 @@ namespace ColumnEncrypt.DataProviders
                 for (int i = 0; i < columns.Count(); i++)
                 {
                     columns.ElementAt(i).Index = i;
-                    columns.ElementAt(i).AddColumnRecord(row[i]);
+                    ColumnEncryptionInfo encryptionInfo = protectionConfig.ColumnEncryptionInfo.Where(x => x.ColumnName == header[i]).FirstOrDefault();
+                    if (encryptionInfo != null && isEncrypted)
+                    {
+                        // Column encrypted. Need to convert the hexstring to a binary array for decryption
+                        byte[] columnData = Converter.FromHexString(row[i]);
+                        columns.ElementAt(i).AddColumnRecord(columnData);
+                    }
+                    else
+                    {
+                        columns.ElementAt(i).AddColumnRecord(row[i]);
+                    }
                 }
             }
-            // var result = (IEnumerable<IEnumerable<IColumn>>)(columns as IColumn);
+
             var result = columns as IEnumerable<IColumn>;
             var result3 = new List<IEnumerable<IColumn>>();
             result3.Add(result);
