@@ -23,7 +23,7 @@ namespace ColumnEncrypt.DataProviders
             {
                 ColumnEncryptionInfo encryptionInfo = config.ColumnEncryptionInfo.Where(x => x.ColumnName == header[i]).FirstOrDefault();
 
-                if (encryptionInfo != null)
+                if (encryptionInfo != null) // this column has encryption info
                 {
                     string dekName = encryptionInfo.ColumnKeyName;
 
@@ -44,27 +44,41 @@ namespace ColumnEncrypt.DataProviders
                         else
                             encryptionType = EncryptionType.Plaintext;
                     }
-
-                    var encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey(dekName, kek, dekBytes), encryptionType, new SqlVarCharSerializer (size: 255));
-                    encryptionSettings.Add(encryptionSetting);
+                    
+                    if (encrypted)
+                    {
+                        // FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey(dekName, kek, dekBytes), encryptionType, new SqlVarCharSerializer (size: 255));
+                        FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey(dekName, kek, dekBytes), encryptionType, StandardSerializerFactory.Default.GetDefaultSerializer<string>());
+                        // FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey(dekName, kek, dekBytes), encryptionType, new CSVSerializer());
+                        encryptionSettings.Add(encryptionSetting);
+                    }
+                    else
+                    {
+                        // FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey(dekName, kek, dekBytes), encryptionType, new CSVSerializer());
+                        FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey(dekName, kek, dekBytes), encryptionType, StandardSerializerFactory.Default.GetDefaultSerializer<string>());
+                        // FileEncryptionSettings<byte[]> encryptionSetting = new FileEncryptionSettings<byte[]>(new ProtectedDataEncryptionKey(dekName, kek, dekBytes), encryptionType, StandardSerializerFactory.Default.GetDefaultSerializer<byte[]>());
+                        encryptionSettings.Add(encryptionSetting);
+                    }
                 }
-                else
+                else    // set dummy encryption info
                 {
+                    /*
                     if (defaultKEK == null)
                     {
                         ColumnMasterKeyInfo kekInfo = config.ColumnMasterKeyInfo.First();
                         KeyEncryptionKey kek = new KeyEncryptionKey(kekInfo.Name, kekInfo.KeyPath, azureKeyProvider);
                         defaultKEK = kek;
                     }
-                    
+
                     var encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey("none", defaultKEK) , EncryptionType.Plaintext, new SqlVarCharSerializer (size: 255));
-                    encryptionSettings.Add(encryptionSetting);
+                    // encryptionSettings.Add(encryptionSetting);
+                    */
+                    encryptionSettings.Add(null);
                 }
             }
 
             return encryptionSettings;
         }
-
 
     }
 }
