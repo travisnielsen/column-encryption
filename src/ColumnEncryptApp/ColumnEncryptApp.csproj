@@ -22,7 +22,6 @@
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" Version="2.5.1" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.7.0" />
     <PackageReference Include="Azure.Identity" Version="1.2.2" />
-    <PackageReference Include="Microsoft.Data.Encryption.FileEncryption" Version="0.2.0-pre" />
   </ItemGroup>
 
   <ItemGroup>

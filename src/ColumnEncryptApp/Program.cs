@@ -1,16 +1,11 @@
-﻿using McMaster.Extensions.CommandLineUtils;
-using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System;
 using System.IO;
-
+using System.ComponentModel.DataAnnotations;
+using McMaster.Extensions.CommandLineUtils;
 using ColumnEncrypt.Config;
 using ColumnEncrypt.Metadata;
-using ColumnEncrypt.DataProviders;
-
 using Azure.Core;
 using Azure.Identity;
-
-using Microsoft.Data.Encryption.FileEncryption;
 
 namespace ColumnEncrypt.App
 {
@@ -23,7 +18,7 @@ namespace ColumnEncrypt.App
     public class Program
     {
         // New Token Credential to authenticate to Azure interactively.
-        public static readonly TokenCredential TokenCredential = new InteractiveBrowserCredential();
+        private static readonly TokenCredential tokenCredential = new InteractiveBrowserCredential();
 
         [Argument(0, Description = "The command to execute.  'encrypt' or 'decrypt'.")]
         [Required]
@@ -53,44 +48,40 @@ namespace ColumnEncrypt.App
         {
             string outPath = OutputFilePath ?? (Path.GetFileNameWithoutExtension(DataFilePath) + "_output" + Path.GetExtension(DataFilePath));
 
-            // load configuration file
-            // YamlConfigReader configFile = new YamlConfigReader(".\\resources\\config.yaml");
             YamlConfigReader configFile = new YamlConfigReader(MetadataFilePath);
             DataProtectionConfig protectionConfig = configFile.Read();
 
-            bool sourceIsEncrypted = false;
-            bool targetIsEncrypted = true;
-            string outputFileName = "";
+            FileData sourceFile = null;
+            FileData targetFile = null;
 
             switch (Command.ToLower())
             {
                 case "encrypt":
-                    sourceIsEncrypted = false;
-                    targetIsEncrypted = true;
-                    outputFileName = DataFilePath.Split('.')[0] + "-encrypted." + DataFilePath.Split('.')[1];
+                    sourceFile = new FileData(DataFilePath, false);
+                    targetFile = new FileData(outPath, true);
                     break; 
                 case "decrypt":
-                    sourceIsEncrypted = true;
-                    targetIsEncrypted = false;
-                    outputFileName = DataFilePath.Split('.')[0] + "-decrypted." + DataFilePath.Split('.')[1];
+                    sourceFile = new FileData(DataFilePath, true);
+                    targetFile = new FileData(outPath, false);
+                    ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential);
                     break;
                 default:
                     Console.WriteLine("Not a valid command. Try 'encrypt' or 'decrypt' as a command.");
                     break;
             }
 
+            ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential);
 
             // For encryption operations, we're going to remove output settings
 
             // open input and output file streams
             // Stream inputFile = File.OpenRead (".\\resources\\userdata.parquet");
             // Stream outputFile = File.OpenWrite (".\\resources\\userdata.parquet");
-            Stream outputFile = File.OpenWrite (outputFileName);
+            //  Stream outputFile = File.OpenWrite (outputFileName);
 
             // Create reader
             // using ParquetFileReader reader = new ParquetFileReader (inputFile);
-            CSVDataReader reader = new CSVDataReader(new StreamReader(DataFilePath), protectionConfig, TokenCredential, sourceIsEncrypted);
-            
+
             // Copy source settings as target settings
             /*
             List<FileEncryptionSettings> writerSettings = reader.FileEncryptionSettings
@@ -100,19 +91,9 @@ namespace ColumnEncrypt.App
 
             // Create and pass the target settings to the writer
             // using ParquetFileWriter writer = new ParquetFileWriter (outputFile, writerSettings);
-            using CSVDataWriter writer = new CSVDataWriter (new StreamWriter(outputFile), protectionConfig, TokenCredential, reader.Header, targetIsEncrypted);
-
-            // Process the file
-            ColumnarCryptographer cryptographer = new ColumnarCryptographer (reader, writer);
-            try
-            {
-                cryptographer.Transform ();
-                Console.WriteLine ($"File processed successfully. Verify output file contains encrypted data.");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
+            
+            // using CSVDataWriter writer = new CSVDataWriter (new StreamWriter(outputFile), protectionConfig, TokenCredential, reader.Header, targetIsEncrypted);
+            // Crypto.FileTransform(reader, writer);
             
         }
 

@@ -3,22 +3,24 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Globalization;
 using ColumnEncrypt.Data;
 using ColumnEncrypt.Metadata;
+using ColumnEncrypt.Util;
 using Microsoft.Data.Encryption.FileEncryption;
 using Microsoft.Data.Encryption.AzureKeyVaultProvider;
 using Azure.Core;
-using System.Globalization;
-using ColumnEncrypt.Util;
 
 namespace ColumnEncrypt.DataProviders
 {
     /// <summary> Handles reading data from delimited files </summary>
-    public class CSVDataReader : CSVData, IColumnarDataReader, IDisposable
+    public class CSVDataReader : IColumnarDataReader, IDisposable
     {
         private readonly CsvReader csvReader;
-
         private readonly DataProtectionConfig protectionConfig;
+        private IList<FileEncryptionSettings> encryptionSettings;
+        private string[] header;
+        private bool isEncrypted = false;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
@@ -44,11 +46,10 @@ namespace ColumnEncrypt.DataProviders
         {
             this.csvReader = new CsvReader(reader, CultureInfo.InvariantCulture, true);
             this.encryptionSettings = new List<FileEncryptionSettings>();
-            this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
             header = ReaderHeaderIfRequired();
             this.protectionConfig = config;
             this.isEncrypted = encrypted;
-            this.encryptionSettings = LoadFileEncryptionSettings(config);
+            this.encryptionSettings = ColumnSettings.Load(config, header, new AzureKeyVaultKeyStoreProvider(credential), encrypted);
         }
 
         /// <summary> Initializes a new instance of <see cref="CSVDataReader"/> class </summary>

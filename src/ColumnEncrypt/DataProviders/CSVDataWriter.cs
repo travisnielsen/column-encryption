@@ -1,22 +1,23 @@
 ﻿using CsvHelper;
-using ColumnEncrypt.Data;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Globalization;
 using Microsoft.Data.Encryption.FileEncryption;
 using Azure.Core;
-using Microsoft.Data.Encryption.Cryptography;
 using Microsoft.Data.Encryption.AzureKeyVaultProvider;
 using ColumnEncrypt.Metadata;
-using System.Globalization;
+using ColumnEncrypt.Util;
 
 namespace ColumnEncrypt.DataProviders
 {
     /// <summary> Handles writing data to delimited files </summary>
-    public class CSVDataWriter : CSVData, IColumnarDataWriter, IDisposable
+    public class CSVDataWriter : IColumnarDataWriter, IDisposable
     {
         private readonly CsvWriter csvWriter;
+        private IList<FileEncryptionSettings> encryptionSettings;
+        private string[] header;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
@@ -32,17 +33,14 @@ namespace ColumnEncrypt.DataProviders
         {
             this.csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
             this.header = header;
-            this.azureKeyProvider = new AzureKeyVaultKeyStoreProvider (credential);
-            this.isEncrypted = encrypted;
-            this.encryptionSettings = LoadFileEncryptionSettings(config);
+            this.encryptionSettings = ColumnSettings.Load(config, header, new AzureKeyVaultKeyStoreProvider(credential), encrypted);
         }
 
         /// <inheritdoc/>
         public void Write(IEnumerable<IColumn> columnData)
         {
             var headers = columnData.Select(c => c.Name).ToList();
-
-            headers.ForEach(h => this.csvWriter.WriteField(h));
+            headers.ForEach(h => csvWriter.WriteField(h));
             this.csvWriter.NextRecord();
 
             var recordCount = columnData?.FirstOrDefault()?.Data.Length;
@@ -51,9 +49,9 @@ namespace ColumnEncrypt.DataProviders
             {
                 foreach (var column in columnData)
                 {
-                    this.csvWriter.WriteField(column.Data.GetValue(i));
+                    csvWriter.WriteField(column.Data.GetValue(i));
                 }
-                this.csvWriter.NextRecord();
+                csvWriter.NextRecord();
             }
         }
 
@@ -66,7 +64,7 @@ namespace ColumnEncrypt.DataProviders
             {
                 if (disposing)
                 {
-                    this.csvWriter?.Dispose();
+                    csvWriter?.Dispose();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
