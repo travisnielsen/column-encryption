@@ -11,6 +11,5 @@ namespace ColumnEncrypt.DataProviders
         protected KeyEncryptionKey defaultKEK;
         protected IList<FileEncryptionSettings> encryptionSettings;
         protected bool isEncrypted = false;
-
     }
 }

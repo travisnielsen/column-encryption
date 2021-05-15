@@ -27,7 +27,6 @@ namespace ColumnEncrypt
             }
         }
 
-
         public static void FileTransform(FileData input, FileData output, DataProtectionConfig config, TokenCredential credential)
         {
             ColumnarCryptographer cryptographer;
