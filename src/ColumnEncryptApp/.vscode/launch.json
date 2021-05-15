@@ -5,7 +5,7 @@
    "version": "0.2.0",
    "configurations": [
         {
-            "name": "Console - Encrypt",
+            "name": "Console: Encrypt (csv -> csv)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -18,7 +18,20 @@
             "stopAtEntry": false
         },
         {
-            "name": "Console - Decrypt",
+            "name": "Console: Encrypt (csv -> parquet)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryptApp.dll",
+            "args": ["encrypt", "-m config.yaml", "-d userdata.csv", "-o userdata-encrypted.parquet"],
+            "cwd": "${workspaceFolder}",
+            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },        
+        {
+            "name": "Console: Decrypt (csv -> csv)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -29,12 +42,6 @@
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
             "stopAtEntry": false
-        },
-        {
-            "name": ".NET Core Attach",
-            "type": "coreclr",
-            "request": "attach",
-            "processId": "${command:pickProcess}"
         }
     ]
 }
