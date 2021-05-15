@@ -47,7 +47,7 @@ namespace ColumnEncrypt.Util
                 }
                 else
                 {
-                    FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(null, EncryptionType.Plaintext, new SqlVarCharSerializer (size: 255));
+                    FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(null, new SqlVarCharSerializer (size: 255));
                     encryptionSettings.Add(encryptionSetting);
                 }
             }
