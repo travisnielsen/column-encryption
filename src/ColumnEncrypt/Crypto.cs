@@ -14,12 +14,12 @@ namespace ColumnEncrypt
     {
         public static void FileTransform(IColumnarDataReader reader, IColumnarDataWriter writer)
         {
-            ColumnarCryptographer cryptographer = new ColumnarCryptographer (reader, writer);
+            ColumnarCryptographer cryptographer = new ColumnarCryptographer(reader, writer);
 
             try
             {
-                cryptographer.Transform ();
-                Console.WriteLine ($"File processed successfully. Verify output file contains encrypted data.");
+                cryptographer.Transform();
+                Console.WriteLine($"File processed successfully. Verify output file contains encrypted data.");
             }
             catch (Exception e)
             {
@@ -27,118 +27,112 @@ namespace ColumnEncrypt
             }
         }
 
+
         public static void FileTransform(FileData input, FileData output, DataProtectionConfig config, TokenCredential credential)
         {
             ColumnarCryptographer cryptographer;
 
-            if (input.FileType == FileType.csv)
-            {
-                using var csvReader = new CSVDataReader(new StreamReader(input.FilePath), config, credential, input.IsEncrypted);
-                
-                if (output.FileType == FileType.csv)
-                {
-                    using var csvWriter = new CSVDataWriter (new StreamWriter(output.FilePath), config, credential, csvReader.Header, output.IsEncrypted);
-                    cryptographer = new ColumnarCryptographer (csvReader, csvWriter);
-                    cryptographer.Transform ();
-                }
-                else if (output.FileType == FileType.parquet)
-                {
-                    using var parquetWriter = new ParquetFileWriter (File.OpenWrite(output.FilePath), ColumnSettings.Load(config, null, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
-                    cryptographer = new ColumnarCryptographer (csvReader, parquetWriter);
-                    cryptographer.Transform ();
-                }
-                else if (output.FileType == FileType.avro)
-                {
-                    throw new NotImplementedException("Avro format not implemented");
-                }
-                else
-                {
-                    throw new ArgumentException("file extension is not recognized");
-                }
-            }
-            else if (input.FileType == FileType.parquet)
-            {
-                var parquetReader = new ParquetFileReader(File.OpenRead(input.FilePath));
+            // initialize the reader & writer so checks can be done later for value
+            IDisposable reader = null;
+            IDisposable writer = null;
+            string[] header = null;
 
-                if (output.FileType == FileType.csv)
-                {
-                    // TOOD: need to implement logic for parquet read to csv write
-                    using var csvWriter = new CSVDataWriter (new StreamWriter(output.FilePath), config, credential, null, output.IsEncrypted);
-                    cryptographer = new ColumnarCryptographer (parquetReader, csvWriter);
-                    cryptographer.Transform ();
-                }
-                else if (output.FileType == FileType.parquet)
-                {
-                    using var parquetWriter = new ParquetFileWriter (File.OpenWrite(output.FilePath), ColumnSettings.Load(config, null, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
-                    cryptographer = new ColumnarCryptographer (parquetReader, parquetWriter);
-                    cryptographer.Transform ();
-                }
-                else if (output.FileType == FileType.avro)
-                {
-                    throw new NotImplementedException("Avro format not implemented");
-                }
-                else
-                {
-                    throw new ArgumentException("file extension is not recognized");
-                }
-
-            }
-            else if (input.FileType == FileType.avro)
+            // FileType is csv, parquet, or avro - no other choices
+            //  so the only option to fail would be avro.  No need to throw ArgumentException
+            //  since the FileType is a non-nullable Enum and it has to be one of the 3 values 
+            if (input.FileType == FileType.avro || output.FileType == FileType.avro)
             {
                 throw new NotImplementedException("Avro format not implemented");
             }
-            else
+
+            // switch on the input type and create the reader & the writer if "CSV" else create the parquet writer further down
+            switch (input.FileType)
             {
-                throw new ArgumentException("file extension is not recognized");
+                case FileType.csv:
+
+                    reader = new CSVDataReader(new StreamReader(input.FilePath), config, credential, input.IsEncrypted);
+
+                    // set the unique header value if output is CSV
+                    if (output.FileType == FileType.csv)
+                    {
+                        header = ((CSVDataReader)reader).Header;
+                    }
+                    break;
+
+
+                case FileType.parquet:
+                    // Just create the reader, leave the header null
+                    reader = new ParquetFileReader(File.OpenRead(input.FilePath));
+                    break;
+            }
+
+            // Create the writer object
+            switch (output.FileType)
+            {
+                case FileType.csv:
+                    // CSV writer has all the same parameters except for the header which is set above to null by default or then reset to the Header value of the reader
+                    writer = new CSVDataWriter(new StreamWriter(output.FilePath), config, credential, header, output.IsEncrypted);
+                    break;
+
+                case FileType.parquet:
+                    // parquet writer looks to be identical for either input type
+                    writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), ColumnSettings.Load(config, null, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
+                    break;
+            }
+
+            // Got all the values, do the work
+            using (reader)
+            {
+                using (writer)
+                {
+                    cryptographer = new ColumnarCryptographer((IColumnarDataReader)reader, (IColumnarDataWriter)writer);
+                    cryptographer.Transform();
+                }
             }
         }
+
 
         private static IColumnarDataReader GetReader(FileData input, DataProtectionConfig config, TokenCredential credential)
         {
-            if (input.FileType == FileType.csv)
+            IColumnarDataReader reader = null;
+
+            switch (input.FileType)
             {
-                var csvReader = new CSVDataReader(new StreamReader(input.FilePath), config, credential, input.IsEncrypted);
-                return csvReader;
+                case FileType.csv:
+                    reader = new CSVDataReader(new StreamReader(input.FilePath), config, credential, input.IsEncrypted);
+                    break;
+
+                case FileType.parquet:
+                    reader = new ParquetFileReader(File.OpenRead(input.FilePath));
+                    break;
+
+                case FileType.avro:
+                    throw new NotImplementedException("Avro format not implemented");
             }
-            else if (input.FileType == FileType.parquet)
-            {
-                using var parquetReader = new ParquetFileReader(File.OpenRead(input.FilePath));
-                return parquetReader;
-            }
-            else if (input.FileType == FileType.avro)
-            {
-                throw new NotImplementedException("Avro format not implemented");
-            }
-            else
-            {
-                throw new ArgumentException("file extension is not recognized");
-            }
+
+            return reader;
         }
+
 
         private static IColumnarDataWriter GetWriter(FileData output, IColumnarDataReader reader, DataProtectionConfig config, TokenCredential credential)
         {
+            IColumnarDataWriter writer = null;
 
-            if (output.FileType == FileType.csv)
+            switch (output.FileType)
             {
-                var csvReader = (CSVDataReader) reader;
-                var csvWriter = new CSVDataWriter (new StreamWriter(output.FilePath), config, credential, csvReader.Header, output.IsEncrypted);
-                return csvWriter;
+                case FileType.csv:
+                    writer = new CSVDataWriter(new StreamWriter(output.FilePath), config, credential, ((CSVDataReader)reader).Header, output.IsEncrypted);
+                    break;
+
+                case FileType.parquet:
+                    writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), ColumnSettings.Load(config, null, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
+                    break;
+
+                case FileType.avro:
+                    throw new NotImplementedException("Avro format not implemented");
             }
-            else if (output.FileType == FileType.parquet)
-            {
-                using var parquetWriter = new ParquetFileWriter (File.OpenWrite(output.FilePath), ColumnSettings.Load(config, null, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
-                return parquetWriter;
-            }
-            else if (output.FileType == FileType.avro)
-            {
-                throw new NotImplementedException("Avro format not implemented");
-            }
-            else
-            {
-                throw new ArgumentException("file extension is not recognized");
-            }
+
+            return writer;
         }
-
-
     }
 }
