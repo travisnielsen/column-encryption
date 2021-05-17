@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using ColumnEncrypt.Metadata;
 using Microsoft.Data.Encryption.Cryptography;
@@ -46,11 +47,27 @@ namespace ColumnEncrypt.Util
                 }
                 else
                 {
-                    encryptionSettings.Add(null);
+                    FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(null, new SqlVarCharSerializer (size: 255));
+                    encryptionSettings.Add(encryptionSetting);
                 }
             }
 
             return encryptionSettings;
         }
+
+        private static FileEncryptionSettings Copy (FileEncryptionSettings encryptionSettings) {
+            Type genericType = encryptionSettings.GetType ().GenericTypeArguments[0];
+            Type settingsType = typeof (FileEncryptionSettings<>).MakeGenericType (genericType);
+            return (FileEncryptionSettings) Activator.CreateInstance (
+                settingsType,
+                new object[] {
+                    encryptionSettings.DataEncryptionKey,
+                        encryptionSettings.EncryptionType,
+                        encryptionSettings.GetSerializer ()
+                }
+            );
+        }
+
+
     }
 }
