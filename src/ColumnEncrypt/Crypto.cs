@@ -51,14 +51,17 @@ namespace ColumnEncrypt
                 case FileType.csv:
 
                     reader = new CSVDataReader(new StreamReader(input.FilePath), config, credential, input.IsEncrypted);
+                    header = ((CSVDataReader)reader).Header;
 
                     // set the unique header value if output is CSV
+                    /*
                     if (output.FileType == FileType.csv)
                     {
                         header = ((CSVDataReader)reader).Header;
                     }
-                    break;
+                    */
 
+                    break;
 
                 case FileType.parquet:
                     // Just create the reader, leave the header null
@@ -76,7 +79,7 @@ namespace ColumnEncrypt
 
                 case FileType.parquet:
                     // parquet writer looks to be identical for either input type
-                    writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), ColumnSettings.Load(config, null, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
+                    writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), ColumnSettings.Load(config, header, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
                     break;
             }
 
