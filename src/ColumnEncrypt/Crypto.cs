@@ -49,18 +49,8 @@ namespace ColumnEncrypt
             switch (input.FileType)
             {
                 case FileType.csv:
-
                     reader = new CSVDataReader(new StreamReader(input.FilePath), config, credential, input.IsEncrypted);
                     header = ((CSVDataReader)reader).Header;
-
-                    // set the unique header value if output is CSV
-                    /*
-                    if (output.FileType == FileType.csv)
-                    {
-                        header = ((CSVDataReader)reader).Header;
-                    }
-                    */
-
                     break;
 
                 case FileType.parquet:
