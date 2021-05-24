@@ -5,10 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Globalization;
 using Microsoft.Data.Encryption.FileEncryption;
-using Azure.Core;
-using Microsoft.Data.Encryption.AzureKeyVaultProvider;
-using ColumnEncrypt.Metadata;
-using ColumnEncrypt.Util;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -17,7 +13,6 @@ namespace ColumnEncrypt.DataProviders
     {
         private readonly CsvWriter csvWriter;
         private IList<FileEncryptionSettings> encryptionSettings;
-        private string[] header;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
@@ -29,11 +24,10 @@ namespace ColumnEncrypt.DataProviders
 
         /// <summary> Initializes a new instances of <see cref="CSVDataWriter"/> class </summary>
         /// <param name="writer"> Text writer to the destination file </param>
-        public CSVDataWriter(StreamWriter writer, DataProtectionConfig config, TokenCredential credential, string[] header, bool encrypted)
+        public CSVDataWriter(StreamWriter writer, IList<FileEncryptionSettings> settings)
         {
             this.csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
-            this.header = header;
-            this.encryptionSettings = ColumnSettings.Load(config, header, new AzureKeyVaultKeyStoreProvider(credential), encrypted);
+            this.encryptionSettings = settings;
         }
 
         /// <inheritdoc/>

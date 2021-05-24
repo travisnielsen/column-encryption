@@ -17,7 +17,30 @@ namespace ColumnEncrypt.Data
         {
             get
             {
-                return _dataList.ToArray();
+                if (typeof(Int32) == DataType)
+                {
+                    return _dataList.OfType<int>().ToArray();
+                }
+                if (typeof(long) == DataType)
+                {
+                    return _dataList.OfType<long>().ToArray();
+                }
+                if (typeof(float) == DataType)
+                {
+                    return _dataList.OfType<float>().ToArray();
+                }
+                if (typeof(double) == DataType)
+                {
+                    return _dataList.OfType<double>().ToArray();
+                }
+                if (typeof(byte[]) == DataType)
+                {
+                    return _dataList.OfType<byte[]>().ToArray();
+                }
+                else
+                {
+                    return _dataList.OfType<string>().ToArray();
+                }
             }
             set
             {
@@ -40,9 +63,8 @@ namespace ColumnEncrypt.Data
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentNullException(nameof(name));
             if (type == null) throw new ArgumentNullException(nameof(type));
 
-            this.Name = name;
             this.DataType = type;
-            // this.Data = new Array;
+            this.Name = name;
             _dataList = new List<object>();
         }
         

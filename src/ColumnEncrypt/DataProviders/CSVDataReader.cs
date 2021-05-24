@@ -8,8 +8,6 @@ using ColumnEncrypt.Data;
 using ColumnEncrypt.Metadata;
 using ColumnEncrypt.Util;
 using Microsoft.Data.Encryption.FileEncryption;
-using Microsoft.Data.Encryption.AzureKeyVaultProvider;
-using Azure.Core;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -17,43 +15,26 @@ namespace ColumnEncrypt.DataProviders
     public class CSVDataReader : IColumnarDataReader, IDisposable
     {
         private readonly CsvReader csvReader;
-        private readonly DataProtectionConfig protectionConfig;
         private IList<FileEncryptionSettings> encryptionSettings;
         private string[] header;
-        private bool isEncrypted = false;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
-            get
-            {
-                return this.encryptionSettings;
-            }
+            get { return this.encryptionSettings; }
+            set { encryptionSettings = value; }
         }
 
         public string[] Header
         {
             get
             {
-                return this.header;
+                return this.ReaderHeaderIfRequired();
             }
         }
 
-        /// <summary> Initializes a new instance of <see cref="CSVDataReader"/> class with encryption metadata </summary>
-        /// <param name="reader"> Text reader of the source </param>
-        /// <param name="credential">A tokencredential for authenticating to Key Vault</param>
-        /// <param name="encrypted">Indicates if the current file has encryption or not</param>
-        public CSVDataReader(StreamReader reader, DataProtectionConfig config, TokenCredential credential, bool encrypted)
-        {
-            this.csvReader = new CsvReader(reader, CultureInfo.InvariantCulture, true);
-            this.encryptionSettings = new List<FileEncryptionSettings>();
-            header = ReaderHeaderIfRequired();
-            this.protectionConfig = config;
-            this.isEncrypted = encrypted;
-            this.encryptionSettings = ColumnSettings.Load(config, header, new AzureKeyVaultKeyStoreProvider(credential), encrypted);
-        }
-
         /// <summary> Initializes a new instance of <see cref="CSVDataReader"/> class </summary>
-        /// <param name="reader"> Text reader of the source </param>
+        /// <param name="reader">source csv file</param>
+        /// <param name="settings">column encryption settings</param>
         public CSVDataReader(StreamReader reader)
         {
             this.csvReader = new CsvReader(reader, CultureInfo.InvariantCulture, true);
@@ -62,8 +43,28 @@ namespace ColumnEncrypt.DataProviders
 
         public IEnumerable<IEnumerable<IColumn>> Read()
         {
-            this.ReaderHeaderIfRequired();
-            IEnumerable<ColumnData> columns = header.Select(n => new ColumnData(n)).ToArray();
+            if (encryptionSettings == null)
+            {
+                throw new Exception("Cannot read CSV without encryption settings");
+            }
+
+            List<ColumnData> columns = new List<ColumnData>();
+
+            for (int i=0; i < header.Length; i++)
+            {
+                var columnEncryptionSetting = encryptionSettings[i];
+
+                // If the source column is encrypted, we need to set the column data type to byte[] by passing the type into the ColumnData constructor
+                if (columnEncryptionSetting.EncryptionType != Microsoft.Data.Encryption.Cryptography.EncryptionType.Plaintext)
+                {
+                    columns.Add(new ColumnData(header[i], typeof(byte[])));
+                }
+                // othereise, we'll default to string
+                else
+                {
+                    columns.Add(new ColumnData(header[i], typeof(string)));
+                }
+            }
 
             while (this.csvReader.Read())
             {
@@ -71,10 +72,14 @@ namespace ColumnEncrypt.DataProviders
                 for (int i = 0; i < columns.Count(); i++)
                 {
                     columns.ElementAt(i).Index = i;
-                    ColumnEncryptionInfo encryptionInfo = protectionConfig.ColumnEncryptionInfo.Where(x => x.ColumnName == header[i]).FirstOrDefault();
-                    if (encryptionInfo != null && isEncrypted)
+                    var columnEncryptionSetting = encryptionSettings[i];
+
+                    Type columnDataType = columns.ElementAt(i).DataType;
+
+                    // if (columnEncryptionSetting.EncryptionType != Microsoft.Data.Encryption.Cryptography.EncryptionType.Plaintext)
+                    if (typeof(byte[]) == columnDataType)
                     {
-                        // Column encrypted. Need to convert the hexstring to a binary array for decryption
+                        // Column encrypted. Need to convert the hexstring to a byte array for decryption
                         byte[] columnData = Converter.FromHexString(row[i]);
                         columns.ElementAt(i).AddColumnRecord(columnData);
                     }

@@ -11,12 +11,12 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryptApp.dll",
-            "args": ["encrypt", "-m config.yaml", "-d userdata.csv"],
+            "args": ["encrypt", "-m config.yaml", "-i userdata.csv", "-o userdata-encrypted.csv", "-c ssn"],
             "cwd": "${workspaceFolder}",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
             "stopAtEntry": false
-        },
+        },   
         {
             "name": "Console: Encrypt (csv -> parquet)",
             "type": "coreclr",
@@ -24,12 +24,12 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryptApp.dll",
-            "args": ["encrypt", "-m config.yaml", "-d userdata.csv", "-o userdata-encrypted.parquet"],
+            "args": ["encrypt", "-m config.yaml", "-i userdata.csv", "-o userdata-encrypted.parquet", "-c ssn"],
             "cwd": "${workspaceFolder}",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
             "stopAtEntry": false
-        },        
+        },
         {
             "name": "Console: Decrypt (csv -> csv)",
             "type": "coreclr",
@@ -37,11 +37,37 @@
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
             "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryptApp.dll",
-            "args": ["decrypt", "-m config.yaml", "-d userdata_output.csv"],
+            "args": ["decrypt", "-m config.yaml", "-i userdata-encrypted.csv", "-o userdata-plaintext.csv", "-c ssn"],
             "cwd": "${workspaceFolder}",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
             "stopAtEntry": false
-        }
+        },
+        {
+            "name": "Console: Decrypt (parquet -> parquet)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryptApp.dll",
+            "args": ["decrypt", "-m config.yaml", "-i userdata-encrypted.parquet", "-o userdata-plaintext.parquet", "-c ssn"],
+            "cwd": "${workspaceFolder}",
+            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Console: Decrypt (parquet -> csv)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryptApp.dll",
+            "args": ["decrypt", "-m config.yaml", "-i userdata-encrypted.parquet", "-o userdata-decrypted.csv"],
+            "cwd": "${workspaceFolder}",
+            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+            "console": "internalConsole",
+            "stopAtEntry": false
+        }     
     ]
 }

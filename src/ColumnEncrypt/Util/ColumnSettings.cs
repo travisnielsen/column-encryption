@@ -10,15 +10,20 @@ namespace ColumnEncrypt.Util
 {
     public static class ColumnSettings
     {
-        private static bool encryption = false;
-
-        public static IList<FileEncryptionSettings> Load(DataProtectionConfig config, string[] header, EncryptionKeyStoreProvider azureKeyProvider, bool encryption)
+        public static IList<FileEncryptionSettings> GetEncryptionSettings(DataProtectionConfig config, string[] columnList, EncryptionKeyStoreProvider azureKeyProvider, bool encryption)
         {
             List<FileEncryptionSettings> encryptionSettings = new List<FileEncryptionSettings>();
 
-            for (int i = 0; i < header.Length; i++)
+            // Set a default key from config. This is required for columns that are not part of encryption
+            ColumnKeyInfo defaultDekInfo = config.ColumnKeyInfo.FirstOrDefault();
+            byte[] defaultDekBytes = Converter.FromHexString(defaultDekInfo.EncryptedColumnKey);
+
+            ColumnMasterKeyInfo defaultKekInfo = config.ColumnMasterKeyInfo.First(x => x.Name == defaultDekInfo.ColumnMasterKeyName);
+            KeyEncryptionKey defaultKek = new KeyEncryptionKey(defaultKekInfo.Name, defaultKekInfo.KeyPath, azureKeyProvider);
+
+            for (int i = 0; i < columnList.Length; i++)
             {
-                ColumnEncryptionInfo encryptionInfo = config.ColumnEncryptionInfo.Where(x => x.ColumnName == header[i]).FirstOrDefault();
+                ColumnEncryptionInfo encryptionInfo = config.ColumnEncryptionInfo.Where(x => x.ColumnName == columnList[i]).FirstOrDefault();
 
                 if (encryptionInfo != null) // this column has encryption info
                 {
@@ -47,12 +52,36 @@ namespace ColumnEncrypt.Util
                 }
                 else
                 {
-                    FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(null, new SqlVarCharSerializer (size: 255));
+                    // This column is not part of any encryption - use default key - cannot currently pass in null or invalid keys, even if they will never be used
+                    FileEncryptionSettings<string> encryptionSetting = new FileEncryptionSettings<string>(new ProtectedDataEncryptionKey("none", defaultKek, defaultDekBytes), EncryptionType.Plaintext, new SqlVarCharSerializer (size: 255));
                     encryptionSettings.Add(encryptionSetting);
                 }
             }
 
             return encryptionSettings;
+        }
+
+        public static IList<FileEncryptionSettings> GetWriterSettings(IList<FileEncryptionSettings> readerSettings, Dictionary<int, string> columnIndexes, EncryptionKeyStoreProvider azureKeyProvider, bool encryption)
+        {
+            List<FileEncryptionSettings> writerSettings = readerSettings.Select(s => Copy(s)).ToList();
+
+            // TODO: Review this code and look at options to base writer settings on config metadata when encryptiong (deterministic vs. randomized) and/or setting keys. Also serializers based on reader data type
+
+            foreach (var item in columnIndexes)
+            {
+                var readerEncryptionSetting = readerSettings[item.Key];
+
+                if (encryption)
+                {
+                    writerSettings[item.Key] = new FileEncryptionSettings<string>(readerEncryptionSetting.DataEncryptionKey, EncryptionType.Randomized, new SqlVarCharSerializer (size: 255));
+                }
+                else
+                {
+                    writerSettings[item.Key] = new FileEncryptionSettings<string>(readerEncryptionSetting.DataEncryptionKey, EncryptionType.Plaintext, new SqlVarCharSerializer (size: 255));
+                }
+            }
+
+            return writerSettings;
         }
 
         private static FileEncryptionSettings Copy (FileEncryptionSettings encryptionSettings) {
@@ -67,7 +96,6 @@ namespace ColumnEncrypt.Util
                 }
             );
         }
-
 
     }
 }
