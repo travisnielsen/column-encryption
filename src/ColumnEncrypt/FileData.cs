@@ -28,10 +28,13 @@ namespace ColumnEncrypt
 
         public string FilePath { get; }
 
-        public FileData(string filePath, bool isEncrypted)
+        public string Schema { get; }
+
+        public FileData(string filePath, bool isEncrypted, string schema)
         {
             IsEncrypted = isEncrypted;
             FilePath = filePath;
+            Schema = schema;
         }
     }
 }

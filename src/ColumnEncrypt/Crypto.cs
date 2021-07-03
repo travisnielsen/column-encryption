@@ -44,11 +44,14 @@ namespace ColumnEncrypt
 
             // FileType is csv, parquet, or avro - no other choices
             //  so the only option to fail would be avro.  No need to throw ArgumentException
-            //  since the FileType is a non-nullable Enum and it has to be one of the 3 values 
+            //  since the FileType is a non-nullable Enum and it has to be one of the 3 values
+
+            /*
             if (input.FileType == FileType.avro || output.FileType == FileType.avro)
             {
                 throw new NotImplementedException("Avro format not implemented");
             }
+            */
 
             // switch on the input type and create the reader & the writer if "CSV" else create the parquet writer further down
             switch (input.FileType)
@@ -68,6 +71,8 @@ namespace ColumnEncrypt
                     transformColumnIndexes = GetColumnIndexes(((ParquetFileReader)reader), columns);
                     readerEncryptionSettings = ((ParquetFileReader)reader).FileEncryptionSettings;
                     break;
+                case FileType.avro:
+                    throw new NotImplementedException("Avro not implemented for reading");
             }
 
             // Create the writer object
@@ -81,6 +86,10 @@ namespace ColumnEncrypt
                 case FileType.parquet:
                     writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
                     break;
+                
+                case FileType.avro:
+                    writer = new AvroDataWriter(new StreamWriter(output.FilePath), ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted), output.Schema);
+                    break;
             }
 
             // Got all the values, do the work
@@ -93,51 +102,6 @@ namespace ColumnEncrypt
                 }
             }
         }
-
-        /*
-        private static IColumnarDataReader GetReader(FileData input, DataProtectionConfig config, TokenCredential credential)
-        {
-            IColumnarDataReader reader = null;
-
-            switch (input.FileType)
-            {
-                case FileType.csv:
-                    reader = new CSVDataReader(new StreamReader(input.FilePath), config, credential, input.IsEncrypted);
-                    break;
-
-                case FileType.parquet:
-                    reader = new ParquetFileReader(File.OpenRead(input.FilePath));
-                    break;
-
-                case FileType.avro:
-                    throw new NotImplementedException("Avro format not implemented");
-            }
-
-            return reader;
-        }
-
-
-        private static IColumnarDataWriter GetWriter(FileData output, IColumnarDataReader reader, DataProtectionConfig config, TokenCredential credential)
-        {
-            IColumnarDataWriter writer = null;
-
-            switch (output.FileType)
-            {
-                case FileType.csv:
-                    writer = new CSVDataWriter(new StreamWriter(output.FilePath), config, credential, ((CSVDataReader)reader).Header, output.IsEncrypted);
-                    break;
-
-                case FileType.parquet:
-                    writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), ColumnSettings.GetEncryptionSettings(config, null, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
-                    break;
-
-                case FileType.avro:
-                    throw new NotImplementedException("Avro format not implemented");
-            }
-
-            return writer;
-        }
-        */
 
         private static Dictionary<int, string> GetColumnIndexes(ParquetFileReader reader, string[] transformColumns)
         {

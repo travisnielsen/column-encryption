@@ -31,6 +31,19 @@
             "stopAtEntry": false
         },
         {
+            "name": "Console: Encrypt (csv -> avro)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/bin/Debug/net5.0/ColumnEncryptApp.dll",
+            "args": ["encrypt", "-m config.yaml", "-i userdata.csv", "-o userdata-encrypted.avro", "-c ssn", "-s schema.json"],
+            "cwd": "${workspaceFolder}",
+            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": "Console: Decrypt (csv -> csv)",
             "type": "coreclr",
             "request": "launch",

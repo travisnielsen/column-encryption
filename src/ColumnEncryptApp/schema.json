@@ -1,6 +1,6 @@
 {
     "type":"record",
-    "name":"Clinic",
+    "name":"UserData",
     "namespace":"com.xx.test",
     "fields": [
        { "name":"ID", "type": "int" },

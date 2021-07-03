@@ -28,7 +28,10 @@ namespace ColumnEncrypt.App
         [Option(Description = "The path to the output data.", LongName = "output", ShortName = "o")]
         public string OutputFilePath { get; }
 
-        [Option(Description = "comma-separated list of columns to apply crypto operations agsint", LongName = "columns", ShortName = "c")]
+        [Option(Description = "The path to the schema file. Used for Avro", LongName = "schema", ShortName = "s")]
+        public string SchemaFilePath { get; }     
+
+        [Option(Description = "comma-separated list of columns to apply crypto operations againsnt", LongName = "columns", ShortName = "c")]
         public string Columns { get; }
 
         public static int Main(string[] args) => CommandLineApplication.Execute<Program>(args);
@@ -51,15 +54,29 @@ namespace ColumnEncrypt.App
             FileData sourceFile = null;
             FileData targetFile = null;
 
+            string avroSchema = null;
+            if (SchemaFilePath != null)
+            {
+                try
+                {
+                    avroSchema = System.IO.File.ReadAllText(SchemaFilePath);
+                }
+                catch (IOException ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    Environment.Exit(1);
+                }
+            }
+
             switch (Command.ToLower())
             {
                 case "encrypt":
-                    sourceFile = new FileData(InputFilePath, false);
-                    targetFile = new FileData(outPath, true);
+                    sourceFile = new FileData(InputFilePath, false, avroSchema);
+                    targetFile = new FileData(outPath, true, avroSchema);
                     break; 
                 case "decrypt":
-                    sourceFile = new FileData(InputFilePath, true);
-                    targetFile = new FileData(outPath, false);
+                    sourceFile = new FileData(InputFilePath, true, avroSchema);
+                    targetFile = new FileData(outPath, false, avroSchema);
                     ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential, columns);
                     break;
                 default:
