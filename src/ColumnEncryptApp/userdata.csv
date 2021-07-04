@@ -1,4 +1,4 @@
-﻿ID,FirstName,LastName,SSN,Email,Gender,CreditRating,LastIPAddress,LastLocationLattitude,LastLocationlongitude
+﻿ID,FirstName,LastName,SSN,Email,Gender,CreditRating,LastIPAddress,LastLocationLattitude,LastLocationLongitude
 1,Lloyd,Flint,275-74-9434,LloydBFlint@cuvox.de,male,240,130.36.232.113,41.104936,-81.491814
 2,James,Crow,657-18-8320,JamesECrow@rhyta.com,male,356,70.145.177.143,34.14139,-81.269604
 3,James,Holiday,376-12-0384,JamesEHoliday@gustr.com,male,438,223.236.25.135,43.009817,-85.756082

@@ -1,16 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Data.Encryption.FileEncryption;
 using Avro;
 using Avro.File;
 using Avro.Generic;
-using System.Linq;
 
 namespace ColumnEncrypt.DataProviders
 {
     public class AvroDataWriter : IColumnarDataWriter, IDisposable
     {
+        private StreamWriter fileWriteStream;
         private Schema schema;
         public IList<FileEncryptionSettings> encryptionSettings;
 
@@ -27,6 +28,7 @@ namespace ColumnEncrypt.DataProviders
         /// <param name="settings">Text writer to the destination file</param>
         public AvroDataWriter(StreamWriter writer, IList<FileEncryptionSettings> settings, string avroSchema)
         {
+            this.fileWriteStream = writer;
             this.encryptionSettings = settings;
             schema = Avro.Schema.Parse(avroSchema);
         }
@@ -37,7 +39,7 @@ namespace ColumnEncrypt.DataProviders
             IList<GenericRecord> records = createRecords(columns, rs);
             DatumWriter<GenericRecord> genericDatumWriter = new GenericDatumWriter<GenericRecord>(schema);
 
-            using (var writer = DataFileWriter<GenericRecord>.OpenAppendWriter(genericDatumWriter, "test.avro"))
+            using (var writer = DataFileWriter<GenericRecord>.OpenWriter(genericDatumWriter, fileWriteStream.BaseStream))
             {
                 foreach (var record in records)
                 {
@@ -52,7 +54,7 @@ namespace ColumnEncrypt.DataProviders
             // throw new NotImplementedException();
         }
 
-        private static IList<GenericRecord> createRecords(IEnumerable<IColumn> columns, RecordSchema recordSchema)
+        private IList<GenericRecord> createRecords(IEnumerable<IColumn> columns, RecordSchema recordSchema)
         {
             List<GenericRecord> records = new List<GenericRecord>();
             var recordCount = columns?.FirstOrDefault()?.Data.Length;
@@ -65,18 +67,27 @@ namespace ColumnEncrypt.DataProviders
                 {
                     string fieldName = column.Name;
                     object fieldValue = column.Data.GetValue(i);
-                    Schema inner = recordSchema[fieldName].Schema;
+                    Schema fieldSchema = recordSchema[fieldName].Schema;
 
-                    if (inner is EnumSchema)
+                    if (fieldSchema.Tag == Schema.Type.Union)
                     {
-                        GenericEnum ge = new GenericEnum(inner as EnumSchema, (string)fieldValue);
+                        var schemas = ((Avro.UnionSchema)fieldSchema).Schemas;
+                        fieldValue = convertData(schemas[0], fieldValue);
+                    }
+                    else if (fieldSchema is EnumSchema)
+                    {
+                        GenericEnum ge = new GenericEnum(fieldSchema as EnumSchema, (string)fieldValue);
                         fieldValue = ge;
                     }
-                    else if (inner is FixedSchema)
+                    else if (fieldSchema is FixedSchema)
                     {
-                        GenericFixed gf = new GenericFixed(inner as FixedSchema);
+                        GenericFixed gf = new GenericFixed(fieldSchema as FixedSchema);
                         gf.Value = (byte[])fieldValue;
                         fieldValue = gf;
+                    }
+                    else
+                    {
+                        fieldValue = convertData(fieldSchema, fieldValue);
                     }
 
                     record.Add(fieldName, fieldValue);
@@ -87,6 +98,29 @@ namespace ColumnEncrypt.DataProviders
 
             return records;
             
+        }
+
+        private object convertData(Schema schema, object value)
+        {
+            // TODO: Use Logical Types for encrypted data
+            if(value.GetType().Name == "Byte[]")
+            {
+                return ColumnEncrypt.Util.Converter.ToHexString((byte[]) value);
+            }
+
+            switch (schema.Tag)
+            {
+                case Schema.Type.Int:
+                    return Int32.Parse(value.ToString());
+                case Schema.Type.Float:
+                    return float.Parse(value.ToString());
+                case Schema.Type.Double:
+                    return double.Parse(value.ToString());
+                case Schema.Type.Boolean:
+                    return bool.Parse(value.ToString());
+                default:
+                    return value;
+            }
         }
 
     }

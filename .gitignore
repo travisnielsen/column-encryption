@@ -365,3 +365,4 @@ local.settings.json
 # output files
 userdata-*.csv
 userdata-*.parquet
+userdata-*.avro

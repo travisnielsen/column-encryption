@@ -31,7 +31,7 @@ namespace ColumnEncrypt.App
         [Option(Description = "The path to the schema file. Used for Avro", LongName = "schema", ShortName = "s")]
         public string SchemaFilePath { get; }     
 
-        [Option(Description = "comma-separated list of columns to apply crypto operations againsnt", LongName = "columns", ShortName = "c")]
+        [Option(Description = "comma-separated list of columns to apply crypto operations against", LongName = "columns", ShortName = "c")]
         public string Columns { get; }
 
         public static int Main(string[] args) => CommandLineApplication.Execute<Program>(args);
