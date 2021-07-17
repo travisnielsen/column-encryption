@@ -6,7 +6,7 @@
       { "name":"ID", "type": "int" },
       { "name":"FirstName", "type": "string" },
       { "name":"LastName", "type": "string" },
-      { "name":"SSN", "type": [ "string", "null" ] },
+      { "name":"SSN", "type": { "type": "bytes", "logicalType": "encrypted", "originalType": "string", "keyId": "abc", "encryptionType": "randomized", "algorithm": "AEAD_AES_256_CBC_HMAC_SHA256" } },
       { "name":"OtherTIN", "type": [ "string", "null" ] },
       { "name":"Email", "type": [ "string", "null" ] },
       { "name":"Gender", "type": [ "string", "null" ] },

@@ -5,7 +5,9 @@ using System.Linq;
 using Microsoft.Data.Encryption.FileEncryption;
 using Avro;
 using Avro.File;
+using Avro.Util;
 using Avro.Generic;
+using ColumnEncrypt.Data;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -14,6 +16,7 @@ namespace ColumnEncrypt.DataProviders
         private StreamWriter fileWriteStream;
         private Schema schema;
         public IList<FileEncryptionSettings> encryptionSettings;
+        public LogicalTypeFactory logicalTypeFactory = LogicalTypeFactory.Instance;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
@@ -30,6 +33,7 @@ namespace ColumnEncrypt.DataProviders
         {
             this.fileWriteStream = writer;
             this.encryptionSettings = settings;
+            logicalTypeFactory.Register(new EncryptedLogicalType());
             schema = Avro.Schema.Parse(avroSchema);
         }
 
@@ -45,6 +49,8 @@ namespace ColumnEncrypt.DataProviders
                 {
                     writer.Append(record);
                 }
+
+                // writer.SetMeta()
             }
         }
 
@@ -103,10 +109,12 @@ namespace ColumnEncrypt.DataProviders
         private object convertData(Schema schema, object value)
         {
             // TODO: Use Logical Types for encrypted data
+            /*
             if(value.GetType().Name == "Byte[]")
             {
                 return ColumnEncrypt.Util.Converter.ToHexString((byte[]) value);
             }
+            */
 
             switch (schema.Tag)
             {

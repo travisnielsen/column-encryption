@@ -12,7 +12,12 @@ namespace ColumnEncrypt.Data
 
         public override object ConvertToBaseValue(object logicalValue, LogicalSchema schema)
         {
-            throw new NotImplementedException();
+            // This is called when serializing / writing data
+            // if logicalValue is encrypted, it will be byte[] return it
+            return logicalValue;
+
+            // if logiclaValue is string, need to convert it to a byte array
+            // BUT: if you are serializing a field in plaintext, you should just change the schema and not use the logicaltype
         }
 
         public override object ConvertToLogicalValue(object baseValue, LogicalSchema schema)
