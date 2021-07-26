@@ -61,6 +61,20 @@ namespace ColumnEncrypt.Util
             return encryptionSettings;
         }
 
+        public static FileEncryptionSettings GetColumnEncryptionSettings<T>(ProtectedDataEncryptionKey encryptionKey, EncryptionType encryptionType)
+        {
+            if (typeof(T) == typeof(Int32))
+                return new FileEncryptionSettings<int>(encryptionKey, encryptionType, new Int32Serializer());
+            if (typeof(T) == typeof(float))
+                return new FileEncryptionSettings<double>(encryptionKey, encryptionType, new DoubleSerializer());
+            if (typeof(T) == typeof(double))
+                return new FileEncryptionSettings<double>(encryptionKey, encryptionType, new DoubleSerializer());
+            if (typeof(T) == typeof(byte[]))
+                return new FileEncryptionSettings<byte[]>(encryptionKey, encryptionType, new ByteArraySerializer());
+            else
+                return new FileEncryptionSettings<string>(encryptionKey, encryptionType, new SqlVarCharSerializer(size: 255));
+        }
+
         public static IList<FileEncryptionSettings> GetWriterSettings(IList<FileEncryptionSettings> readerSettings, Dictionary<int, string> columnIndexes, EncryptionKeyStoreProvider azureKeyProvider, bool encryption)
         {
             List<FileEncryptionSettings> writerSettings = readerSettings.Select(s => Copy(s)).ToList();

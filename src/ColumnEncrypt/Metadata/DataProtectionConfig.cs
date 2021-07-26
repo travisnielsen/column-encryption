@@ -7,6 +7,7 @@ namespace ColumnEncrypt.Metadata
     /// <summary> Config to determine how data is to be protected </summary>
     public class DataProtectionConfig
     {
+
         /// <summary> List of columns to be encrypted and with which key </summary>
         public List<ColumnEncryptionInfo> ColumnEncryptionInfo { get; set; }
 
@@ -15,5 +16,12 @@ namespace ColumnEncrypt.Metadata
 
         /// <summary> Master key information to encrypt column key </summary>
         public List<ColumnMasterKeyInfo> ColumnMasterKeyInfo { get; set; }
+
+        public DataProtectionConfig()
+        {
+            ColumnEncryptionInfo = new List<ColumnEncryptionInfo>();
+            ColumnKeyInfo = new List<ColumnKeyInfo>();
+            ColumnMasterKeyInfo = new List<ColumnMasterKeyInfo>();
+        }
     }
 }

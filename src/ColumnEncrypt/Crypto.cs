@@ -38,20 +38,9 @@ namespace ColumnEncrypt
             // initialize the reader & writer so checks can be done later for value
             IDisposable reader = null;
             IDisposable writer = null;
-            // string[] header = null;
             Dictionary<int, string> transformColumnIndexes = null;
             IList<FileEncryptionSettings> readerEncryptionSettings = null;
 
-            // FileType is csv, parquet, or avro - no other choices
-            //  so the only option to fail would be avro.  No need to throw ArgumentException
-            //  since the FileType is a non-nullable Enum and it has to be one of the 3 values
-
-            /*
-            if (input.FileType == FileType.avro || output.FileType == FileType.avro)
-            {
-                throw new NotImplementedException("Avro format not implemented");
-            }
-            */
 
             // switch on the input type and create the reader & the writer if "CSV" else create the parquet writer further down
             switch (input.FileType)
@@ -65,30 +54,38 @@ namespace ColumnEncrypt
                     break;
 
                 case FileType.parquet:
-                    Dictionary<string, EncryptionKeyStoreProvider> encryptionKeyStoreProviders = new Dictionary<string, EncryptionKeyStoreProvider>();
-                    encryptionKeyStoreProviders.Add("AZURE_KEY_VAULT", new AzureKeyVaultKeyStoreProvider(credential));
-                    reader = new ParquetFileReader(File.OpenRead(input.FilePath), encryptionKeyStoreProviders);
+                    Dictionary<string, EncryptionKeyStoreProvider> parquetEncryptionKeyStoreProviders = new Dictionary<string, EncryptionKeyStoreProvider>();
+                    parquetEncryptionKeyStoreProviders.Add("AZURE_KEY_VAULT", new AzureKeyVaultKeyStoreProvider(credential));
+                    reader = new ParquetFileReader(File.OpenRead(input.FilePath), parquetEncryptionKeyStoreProviders);
                     transformColumnIndexes = GetColumnIndexes(((ParquetFileReader)reader), columns);
                     readerEncryptionSettings = ((ParquetFileReader)reader).FileEncryptionSettings;
                     break;
+
                 case FileType.avro:
-                    throw new NotImplementedException("Avro not implemented for reading");
+                    Dictionary<string, EncryptionKeyStoreProvider> avroEncryptionKeyStoreProviders = new Dictionary<string, EncryptionKeyStoreProvider>();
+                    avroEncryptionKeyStoreProviders.Add("AZURE_KEY_VAULT", new AzureKeyVaultKeyStoreProvider(credential));
+                    reader = new AvroDataReader(File.OpenRead(input.FilePath), avroEncryptionKeyStoreProviders);
+                    transformColumnIndexes = GetColumnIndexes(((AvroDataReader)reader).FieldNames, columns);
+                    readerEncryptionSettings = ((AvroDataReader)reader).FileEncryptionSettings;
+                    break;
             }
 
             // Create the writer object
             switch (output.FileType)
             {
                 case FileType.csv:
-                    var writerSettings = ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted);
-                    writer = new CSVDataWriter(new StreamWriter(output.FilePath), writerSettings);
+                    IList<FileEncryptionSettings> csvWriterSettings = ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted);
+                    writer = new CSVDataWriter(new StreamWriter(output.FilePath), csvWriterSettings);
                     break;
 
                 case FileType.parquet:
-                    writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted));
+                    IList<FileEncryptionSettings> parquetWriterSettings = ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted);
+                    writer = new ParquetFileWriter(File.OpenWrite(output.FilePath), parquetWriterSettings);
                     break;
                 
                 case FileType.avro:
-                    writer = new AvroDataWriter(new StreamWriter(output.FilePath), ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted), output.Schema);
+                    IList<FileEncryptionSettings> avroWriterSettings = ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted);
+                    writer = new AvroDataWriter(new StreamWriter(output.FilePath), avroWriterSettings , output.Schema);
                     break;
             }
 
@@ -103,6 +100,10 @@ namespace ColumnEncrypt
             }
         }
 
+        /// <summary>Returns a dictionary of column indexes and names. </summary>
+        /// <param name="reader"> An instance of <c>ParquetFileReader</c> </param>
+        /// <param name="transformColumns"> Specfic column names targeted for crypto operations </param>
+        /// <returns> A dictionary of matching names and the header index </returns>
         private static Dictionary<int, string> GetColumnIndexes(ParquetFileReader reader, string[] transformColumns)
         {
             Dictionary<int, string> columnIndexes = new Dictionary<int, string>();
@@ -122,15 +123,19 @@ namespace ColumnEncrypt
             return columnIndexes;
         }
 
-        private static Dictionary<int, string> GetColumnIndexes(string[] header, string[] transformcColumns)
+        /// <summary>Returns a dictionary of column indexes and names. </summary>
+        /// <param name="fields"> A sorted list of column names in a text file </param>
+        /// <param name="transformColumns"> Specfic column names targeted for crypto operations </param>
+        /// <returns> A dictionary of matching names and the header index </returns>
+        private static Dictionary<int, string> GetColumnIndexes(string[] fields, string[] transformcColumns)
         {
             Dictionary<int, string> columnIndexes = new Dictionary<int, string>();
 
-            for (int i = 0; i < header.Length; i++)
+            for (int i = 0; i < fields.Length; i++)
             {
-                if (transformcColumns.Contains(header[i].ToLower()))
+                if (transformcColumns.Contains(fields[i].ToLower()))
                 {
-                    columnIndexes.Add(i, header[i]);
+                    columnIndexes.Add(i, fields[i]);
                 }
             }
 
