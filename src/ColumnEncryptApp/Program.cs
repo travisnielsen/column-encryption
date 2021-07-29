@@ -18,7 +18,6 @@ namespace ColumnEncrypt.App
         public string Command { get; }
 
         [Option(Description = "The path to the yaml file specifying column policy metadata and key info.")]
-        [Required]
         public string MetadataFilePath { get; }
 
         [Option(Description = "The path to the input data.", LongName = "input", ShortName = "i")]
@@ -40,9 +39,15 @@ namespace ColumnEncrypt.App
         {
             string inputExtension = Path.GetExtension(InputFilePath);
             string outPath = OutputFilePath ?? (Path.GetFileNameWithoutExtension(InputFilePath) + "_output" + inputExtension);
-            
-            YamlConfigReader configFile = new YamlConfigReader(MetadataFilePath);
-            DataProtectionConfig protectionConfig = configFile.Read();
+
+            DataProtectionConfig protectionConfig = null;
+
+            if (MetadataFilePath != null)
+            {
+                YamlConfigReader configFile = new YamlConfigReader(MetadataFilePath);
+                protectionConfig = configFile.Read();
+            }
+
 
             string[] columns = new string[0];
 
@@ -77,7 +82,7 @@ namespace ColumnEncrypt.App
                 case "decrypt":
                     sourceFile = new FileData(InputFilePath, true, avroSchema);
                     targetFile = new FileData(outPath, false, avroSchema);
-                    ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential, columns);
+                    // ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential, columns);
                     break;
                 default:
                     Console.WriteLine("Not a valid command. Try 'encrypt' or 'decrypt' as a command.");

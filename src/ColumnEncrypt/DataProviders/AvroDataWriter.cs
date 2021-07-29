@@ -10,7 +10,6 @@ using Avro.Util;
 using Avro.Generic;
 using ColumnEncrypt.Data;
 using ColumnEncrypt.Metadata;
-using ColumnEncrypt.Util;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -47,8 +46,6 @@ namespace ColumnEncrypt.DataProviders
 
         public void Write(IEnumerable<IColumn> columns)
         {
-            // List<Field> newFields = new List<Field>();
-
             RecordSchema recordSchema = (RecordSchema)Schema.Parse(avroSchema.ToString());
 
             // Create the metadata for encryption
@@ -147,15 +144,6 @@ namespace ColumnEncrypt.DataProviders
             }
         }
 
-
-        /// <summary>Creates a new Avro schema that defines logical type information for any field that is encrypted.</summary>
-        private RecordSchema CreateSchema(IEnumerable<IColumn> columns, FileEncryptionSettings settings)
-        {
-            // AvroSchema newSchema = new AvroSchema { Name = settings., Type = inputSchema.GetType().ToString(), Namespace = inputSchema.Fullname };
-            // List<Field> newFields = new List<Field>();
-            RecordSchema recordSchema = (RecordSchema)Schema.Parse("");
-            return recordSchema;
-        }
 
         private DataProtectionConfig CreateEncryptionMetadata(List<Field> fields)
         {

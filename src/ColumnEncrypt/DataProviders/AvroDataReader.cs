@@ -7,13 +7,12 @@ using Microsoft.Data.Encryption.Cryptography;
 using Microsoft.Data.Encryption.FileEncryption;
 
 using Avro;
-using Avro.IO;
 using Avro.Generic;
 using Avro.File;
+using Avro.Util;
 using ColumnEncrypt.Data;
 using ColumnEncrypt.Metadata;
 using ColumnEncrypt.Util;
-using Avro.Util;
 
 namespace ColumnEncrypt.DataProviders
 {
@@ -63,6 +62,7 @@ namespace ColumnEncrypt.DataProviders
         public AvroDataReader(Stream stream, IDictionary<string, EncryptionKeyStoreProvider> encryptionKeyStoreProviders)
         {
             _stream = stream;
+            // _schema = Schema.Parse(schema);
             _encryptionKeyStoreProviders = encryptionKeyStoreProviders;
             logicalTypeFactory.Register(new EncryptedLogicalType());
         }
@@ -73,16 +73,43 @@ namespace ColumnEncrypt.DataProviders
         /// <returns></returns>
         public IEnumerable<IEnumerable<IColumn>> Read()
         {
-            var columnData = new List<ColumnData>();
-            var reader = DataFileReader<GenericRecord>.OpenReader(_stream, _schema);
+            var columns = new List<ColumnData>();
 
-            while (reader.HasNext())
+            // TODO: Previous reads update the stream position so subsequent usses of the same stream need to re-set to zero. There's probabaly a better way to do this.
+            _stream.Position = 0;
+
+            using (var reader = DataFileReader<GenericRecord>.OpenReader(_stream, false))
             {
-                GenericRecord record = reader.Next();
-                // TODO: logic here
+                // TODO: This is redundant to the LoadFileMetaData() code. Refactor.
+                RecordSchema schema = (RecordSchema)reader.GetSchema();
+                List<Field> fields = schema.Fields;
+
+                foreach (var field in fields)
+                {
+                    Type dataType = GetFieldDataType(field.Schema);
+                    var newColumn = new ColumnData(field.Name, dataType);
+                    newColumn.Index = field.Pos;
+                    columns.Add(newColumn);
+                    // columns.Add(new ColumnData(field.Name, dataType));
+                }
+
+                // Read in record values
+
+                while (reader.HasNext())
+                {
+                    GenericRecord record = reader.Next();
+
+                    foreach (var column in columns)
+                    {
+                        object fieldData = null;
+                        record.TryGetValue(column.Name, out fieldData);
+                        column.AddColumnRecord(GetTypedValue(column.DataType, fieldData));
+                    }
+                }
+
             }
 
-            var columnDataEnum = columnData as IEnumerable<IColumn>;
+            var columnDataEnum = columns as IEnumerable<IColumn>;
             var result = new List<IEnumerable<IColumn>>();
             result.Add(columnDataEnum);
             return result;
@@ -103,14 +130,15 @@ namespace ColumnEncrypt.DataProviders
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            // TODO: Determine right way to dispose the Avro reader
+            // throw new NotImplementedException();
         }
 
         private void LoadFileMetadata()
         {
             _fileEncryptionSettings = new List<FileEncryptionSettings>();
 
-            using (var reader = DataFileReader<GenericRecord>.OpenReader(_stream))
+            using (var reader = DataFileReader<GenericRecord>.OpenReader(_stream, true))
             {
                 RecordSchema schema = (RecordSchema)reader.GetSchema();
 
@@ -188,10 +216,13 @@ namespace ColumnEncrypt.DataProviders
                             columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<double>(protectedDek, encryptionType);
                             break;
                         case Schema.Type.Logical:
-                            columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<byte[]>(protectedDek, encryptionType);
+                            // columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<byte[]>(protectedDek, encryptionType);
+                            columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<string>(protectedDek, encryptionType);
                             break;                    
                     }
 
+                    // Type dataType = GetFieldDataType(fieldSchema);
+                    // columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<>(protectedDek, encryptionType);
                     _fileEncryptionSettings.Add(columnEncryptionSettings);
 
                 }
@@ -200,18 +231,59 @@ namespace ColumnEncrypt.DataProviders
 
         }
 
-
-        /*
-        public Type GetFieldDataType(object avroDataType)
+        /// <summary>
+        /// Returns the C# type of an Avro field. For Union fields, the first Avro data type is used 
+        /// </summary>
+        /// <param name="fieldSchema"></param>
+        /// <returns></returns>
+        private Type GetFieldDataType(Schema fieldSchema)
         {
-            Type result;
-            result = String;
+            Schema.Type fieldDataType = fieldSchema.Tag;
 
-            return String;
+            if (fieldDataType == Schema.Type.Union)
+            {
+                var schemas = ((Avro.UnionSchema)fieldSchema).Schemas;
+                fieldDataType = schemas[0].Tag;
+            }
 
+            switch (fieldDataType)
+            {
+                case Schema.Type.String:
+                    return new System.String("").GetType();
+                case Schema.Type.Int:
+                    return new Int32().GetType();
+                case Schema.Type.Float:
+                    return new float().GetType();
+                case Schema.Type.Double:
+                    return new double().GetType();
+                case Schema.Type.Logical:
+                    return new byte[0].GetType();
+                default:
+                    return new System.String("").GetType();
+            }
         }
-        */
 
+        /// <summary>
+        /// Converts data stored in a generic object to a C# primitive type
+        /// </summary>
+        /// <param name="fieldSchema"></param>
+        /// <param name="fieldValue"></param>
+        /// <returns></returns>
+        private object GetTypedValue(Type dataType, object fieldValue)
+        {
+            if (dataType == typeof(Int32))
+                return (int)fieldValue;
+            if (dataType == typeof(float))
+                return (float)fieldValue;
+            if (dataType == typeof(float))
+                return (double)fieldValue;
+            if (dataType == typeof(byte[]))    
+                return (byte[]) fieldValue;
+            if (dataType == typeof(string))
+                return (string)fieldValue;
+            else
+                return new Exception("Unsupported type");
+        }
 
     }
 }

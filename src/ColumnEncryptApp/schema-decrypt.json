@@ -1,0 +1,17 @@
+{
+    "type":"record",
+    "name":"UserData",
+    "namespace":"com.nielski.test",
+    "fields": [
+       { "name":"ID", "type": "int" },
+       { "name":"FirstName", "type": "string" },
+       { "name":"LastName", "type": "string" },
+       { "name":"SSN", "type": "string" },
+       { "name":"Email", "type": [ "string", "null" ] },
+       { "name":"Gender", "type": [ "string", "null" ] },
+       { "name":"CreditRating", "type": [ "int", "null" ] },
+       { "name":"LastIPAddress", "type": "string" },
+       { "name":"LastLocationLattitude", "type": "float" },
+       { "name":"LastLocationLongitude", "type": "float" }
+    ]
+ }

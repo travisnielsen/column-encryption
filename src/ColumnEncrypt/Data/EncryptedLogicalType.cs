@@ -1,6 +1,7 @@
 using System;
 using Avro;
 using Avro.Util;
+using ColumnEncrypt.Util;
 
 namespace ColumnEncrypt.Data
 {
@@ -22,7 +23,16 @@ namespace ColumnEncrypt.Data
 
         public override object ConvertToLogicalValue(object baseValue, LogicalSchema schema)
         {
-            throw new NotImplementedException();
+            // THis is call when de-serializing / reading data
+            // Just neeed to return byte array for now for any crypto work. MDE only works against byte[]
+            if (schema.LogicalTypeName.ToLower() == "encrypted")
+            {
+                // string hexValue = Convert.ToHexString((byte[])baseValue);
+                // return hexValue;
+                return baseValue;
+            }
+            else
+                throw new NotImplementedException();
         }
 
         public override Type GetCSharpType(bool nullible)
