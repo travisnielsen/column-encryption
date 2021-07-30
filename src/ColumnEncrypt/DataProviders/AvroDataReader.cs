@@ -18,12 +18,12 @@ namespace ColumnEncrypt.DataProviders
 {
     public class AvroDataReader : IColumnarDataReader, IDisposable
     {
-        private Stream _stream;
-        private Schema _schema;
-        private string[] _fieldNames;
+        private Stream _fileReaderStream;
+        // private string[] _fieldNames;
         private IList<FileEncryptionSettings> _fileEncryptionSettings;
-
         private IDictionary<string, EncryptionKeyStoreProvider> _encryptionKeyStoreProviders;
+        private Dictionary<string, Type> _fields;
+        private LogicalTypeFactory _logicalTypeFactory = LogicalTypeFactory.Instance;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
@@ -45,55 +45,47 @@ namespace ColumnEncrypt.DataProviders
         {
             get
             {
-                if (_fieldNames == null)
+                if (_fields.Count == 0)
                 {
-                    LoadFileMetadata();
-                    return _fieldNames;
+                    bool result = LoadFileMetadata();
+                    return _fields.Keys.ToArray();
                 }
                 else
                 {
-                    return _fieldNames;
+                    return _fields.Keys.ToArray();
                 }
             }
         }
 
-        public LogicalTypeFactory logicalTypeFactory = LogicalTypeFactory.Instance;
-
-        public AvroDataReader(Stream stream, IDictionary<string, EncryptionKeyStoreProvider> encryptionKeyStoreProviders)
+        public AvroDataReader(Stream readerStream, IDictionary<string, EncryptionKeyStoreProvider> encryptionKeyStoreProviders)
         {
-            _stream = stream;
-            // _schema = Schema.Parse(schema);
+            _fileReaderStream = readerStream;
             _encryptionKeyStoreProviders = encryptionKeyStoreProviders;
-            logicalTypeFactory.Register(new EncryptedLogicalType());
+            _logicalTypeFactory.Register(new EncryptedLogicalType());
+            _fields = new Dictionary<string, Type>();
         }
 
         /// <summary>
-        /// 
+        /// Reads data from an Avro file
         /// </summary>
-        /// <returns></returns>
+        /// <returns>List of columns with each column having a list of data elements</returns>
         public IEnumerable<IEnumerable<IColumn>> Read()
         {
+            // TODO: Previous reads update the stream position so subsequent usses of the same stream need to re-set to zero. There's probabaly a better way to do this.
+            _fileReaderStream.Position = 0;
+
             var columns = new List<ColumnData>();
 
-            // TODO: Previous reads update the stream position so subsequent usses of the same stream need to re-set to zero. There's probabaly a better way to do this.
-            _stream.Position = 0;
-
-            using (var reader = DataFileReader<GenericRecord>.OpenReader(_stream, false))
+            using (var reader = DataFileReader<GenericRecord>.OpenReader(_fileReaderStream, false))
             {
-                // TODO: This is redundant to the LoadFileMetaData() code. Refactor.
-                RecordSchema schema = (RecordSchema)reader.GetSchema();
-                List<Field> fields = schema.Fields;
-
-                foreach (var field in fields)
+                int i = 0;
+                foreach(var item in _fields)
                 {
-                    Type dataType = GetFieldDataType(field.Schema);
-                    var newColumn = new ColumnData(field.Name, dataType);
-                    newColumn.Index = field.Pos;
+                    ColumnData newColumn = new ColumnData(item.Key, item.Value);
+                    newColumn.Index = i;
                     columns.Add(newColumn);
-                    // columns.Add(new ColumnData(field.Name, dataType));
+                    i++;
                 }
-
-                // Read in record values
 
                 while (reader.HasNext())
                 {
@@ -113,19 +105,6 @@ namespace ColumnEncrypt.DataProviders
             var result = new List<IEnumerable<IColumn>>();
             result.Add(columnDataEnum);
             return result;
-
-        }
-
-        public string[] GetFieldNames(RecordSchema schema, IFileReader<GenericRecord> reader)
-        {
-            List<string> fieldNames = new List<string>();
-
-            foreach (var field in schema.Fields)
-            {
-                fieldNames.Add(field.Name);
-            }
-
-            return fieldNames.ToArray();
         }
 
         public void Dispose()
@@ -134,26 +113,23 @@ namespace ColumnEncrypt.DataProviders
             // throw new NotImplementedException();
         }
 
-        private void LoadFileMetadata()
+        private bool LoadFileMetadata()
         {
             _fileEncryptionSettings = new List<FileEncryptionSettings>();
 
-            using (var reader = DataFileReader<GenericRecord>.OpenReader(_stream, true))
+            using (var reader = DataFileReader<GenericRecord>.OpenReader(_fileReaderStream, true))
             {
                 RecordSchema schema = (RecordSchema)reader.GetSchema();
-
-                // Set field names
-                _fieldNames = GetFieldNames(schema, reader);
+                _fields = GetFieldInfo(schema, reader);
 
                 // Load encryption metadata from the Avro document
                 List<ColumnKeyInfo> columnKeyInfo = JsonSerializer.Deserialize<List<ColumnKeyInfo>>(reader.GetMetaString("columnKeyInfo"));
                 List<ColumnMasterKeyInfo> masterKeyInfo = JsonSerializer.Deserialize<List<ColumnMasterKeyInfo>>(reader.GetMetaString("columnMasterKeyInfo"));
 
-                // Set a default key from config. This is required for columns that are not part of encryption
+                // Set a default key from config. This is required by the MDE SDK for columns that are not part of encryption
                 ColumnKeyInfo defaultDekInfo = columnKeyInfo.FirstOrDefault();
                 ColumnMasterKeyInfo defaultKekInfo = masterKeyInfo.First(x => x.Name == defaultDekInfo.ColumnMasterKeyName);
                 byte[] defaultDekBytes = Converter.FromHexString(defaultDekInfo.EncryptedColumnKey);
-
                 KeyEncryptionKey defaultKek = new KeyEncryptionKey(defaultKekInfo.Name, defaultKekInfo.KeyPath, _encryptionKeyStoreProviders["AZURE_KEY_VAULT"]);
 
                 foreach (var field in schema.Fields)
@@ -177,7 +153,6 @@ namespace ColumnEncrypt.DataProviders
                         dekName = dekName.Replace("\"", "").Replace("\\", "");
                         ColumnKeyInfo dekInfo = columnKeyInfo.First(x => x.Name == dekName);
                         dekBytes = Converter.FromHexString(dekInfo.EncryptedColumnKey);
-
                         ColumnMasterKeyInfo kekInfo = masterKeyInfo.First(x => x.Name == dekInfo.ColumnMasterKeyName);
                         kek = new KeyEncryptionKey(kekInfo.Name, kekInfo.KeyPath, _encryptionKeyStoreProviders["AZURE_KEY_VAULT"]);
 
@@ -192,7 +167,6 @@ namespace ColumnEncrypt.DataProviders
                     }
 
                     ProtectedDataEncryptionKey protectedDek = new ProtectedDataEncryptionKey(dekName, kek, dekBytes);
-
                     FileEncryptionSettings columnEncryptionSettings = null;
 
                     if (fieldDataType == Schema.Type.Union)
@@ -218,24 +192,39 @@ namespace ColumnEncrypt.DataProviders
                         case Schema.Type.Logical:
                             // columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<byte[]>(protectedDek, encryptionType);
                             columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<string>(protectedDek, encryptionType);
-                            break;                    
+                            break;
                     }
 
-                    // Type dataType = GetFieldDataType(fieldSchema);
-                    // columnEncryptionSettings = ColumnSettings.GetColumnEncryptionSettings<>(protectedDek, encryptionType);
                     _fileEncryptionSettings.Add(columnEncryptionSettings);
-
                 }
-
             }
 
+            return true;
         }
 
         /// <summary>
-        /// Returns the C# type of an Avro field. For Union fields, the first Avro data type is used 
+        /// Uses the Avro schema to provide the name and type of each field
+        /// </summary>
+        /// <param name="schema"></param>
+        /// <param name="reader"></param>
+        /// <returns>Dictionary of field names and associated C# types</returns>
+        private Dictionary<string, Type> GetFieldInfo(RecordSchema schema, IFileReader<GenericRecord> reader)
+        {
+            Dictionary<string, Type> fields = new Dictionary<string, Type>();
+
+            foreach (var field in schema.Fields)
+            {
+                fields.Add(field.Name, GetFieldDataType(field.Schema));
+            }
+
+            return fields;
+        }
+
+        /// <summary>
+        /// Returns the C# type of an Avro field. For Union fields, the first Avro data type excluding 'null' is used 
         /// </summary>
         /// <param name="fieldSchema"></param>
-        /// <returns></returns>
+        /// <returns>C# type</returns>
         private Type GetFieldDataType(Schema fieldSchema)
         {
             Schema.Type fieldDataType = fieldSchema.Tag;
@@ -243,7 +232,7 @@ namespace ColumnEncrypt.DataProviders
             if (fieldDataType == Schema.Type.Union)
             {
                 var schemas = ((Avro.UnionSchema)fieldSchema).Schemas;
-                fieldDataType = schemas[0].Tag;
+                fieldDataType = schemas.Where(s => s.Name != "null").FirstOrDefault().Tag;
             }
 
             switch (fieldDataType)
@@ -284,6 +273,5 @@ namespace ColumnEncrypt.DataProviders
             else
                 return new Exception("Unsupported type");
         }
-
     }
 }

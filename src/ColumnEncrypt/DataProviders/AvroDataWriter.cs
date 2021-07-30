@@ -15,38 +15,38 @@ namespace ColumnEncrypt.DataProviders
 {
     public class AvroDataWriter : IColumnarDataWriter, IDisposable
     {
-        private StreamWriter fileWriteStream;
-        private Schema avroSchema;
-        public IList<FileEncryptionSettings> encryptionSettings;
+        private StreamWriter _fileWriterStream;
+        private Schema _avroSchema;
+        private IList<FileEncryptionSettings> _fileEncryptionSettings;
         public LogicalTypeFactory logicalTypeFactory = LogicalTypeFactory.Instance;
 
         public IList<FileEncryptionSettings> FileEncryptionSettings
         {
             get
             {
-                return this.encryptionSettings;
+                return this._fileEncryptionSettings;
             }
         }
 
         /// <summary> Initializes a new instances of <see cref="AvroDataWriter"/> class </summary>
-        /// <param name="writer">Text writer to the destination file</param>
+        /// <param name="writerStream">Text writer to the destination file</param>
         /// <param name="settings">Text writer to the destination file</param>
         /// <param name="avroSchema">serialized JSON scheme representing the document schema</param>
-        public AvroDataWriter(StreamWriter writer, IList<FileEncryptionSettings> settings, string schema)
+        public AvroDataWriter(StreamWriter writerStream, IList<FileEncryptionSettings> settings, string schema)
         {
-            this.fileWriteStream = writer;
-            this.encryptionSettings = settings;
+            this._fileWriterStream = writerStream;
+            this._fileEncryptionSettings = settings;
             logicalTypeFactory.Register(new EncryptedLogicalType());
 
             if (schema != null)
             {
-                avroSchema = Avro.Schema.Parse(schema);
+                _avroSchema = Avro.Schema.Parse(schema);
             }
         }
 
         public void Write(IEnumerable<IColumn> columns)
         {
-            RecordSchema recordSchema = (RecordSchema)Schema.Parse(avroSchema.ToString());
+            RecordSchema recordSchema = (RecordSchema)Schema.Parse(_avroSchema.ToString());
 
             // Create the metadata for encryption
             DataProtectionConfig dataProtectionConfig = CreateEncryptionMetadata(recordSchema.Fields);
@@ -54,7 +54,7 @@ namespace ColumnEncrypt.DataProviders
             IList<GenericRecord> records = CreateRecords(columns, recordSchema);
             DatumWriter<GenericRecord> genericDatumWriter = new GenericDatumWriter<GenericRecord>(recordSchema);
 
-            using (var writer = DataFileWriter<GenericRecord>.OpenWriter(genericDatumWriter, fileWriteStream.BaseStream))
+            using (var writer = DataFileWriter<GenericRecord>.OpenWriter(genericDatumWriter, _fileWriterStream.BaseStream))
             {
                 // Serialize crypto metadata
                 string columnKeyMetadata = JsonSerializer.Serialize<List<ColumnKeyInfo>>(dataProtectionConfig.ColumnKeyInfo);
@@ -151,7 +151,7 @@ namespace ColumnEncrypt.DataProviders
 
             for (int i = 0; i < fields.Count; i++)
             {
-                var fieldCryptoConfig = encryptionSettings[i];
+                var fieldCryptoConfig = _fileEncryptionSettings[i];
 
                 if (fieldCryptoConfig.EncryptionType != Microsoft.Data.Encryption.Cryptography.EncryptionType.Plaintext)
                 {
