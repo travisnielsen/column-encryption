@@ -69,8 +69,8 @@ namespace ColumnEncrypt.Util
                 return new FileEncryptionSettings<double>(encryptionKey, encryptionType, new DoubleSerializer());
             if (typeof(T) == typeof(double))
                 return new FileEncryptionSettings<double>(encryptionKey, encryptionType, new DoubleSerializer());
-            // if (typeof(T) == typeof(byte[]))
-            //     return new FileEncryptionSettings<byte[]>(encryptionKey, encryptionType, new SqlVarBinarySerializer(30));
+            if (typeof(T) == typeof(byte[]))
+                return new FileEncryptionSettings<byte[]>(encryptionKey, encryptionType, new SqlVarBinarySerializer(30));
             else
                 return new FileEncryptionSettings<string>(encryptionKey, encryptionType, new SqlVarCharSerializer(size: 255));
         }

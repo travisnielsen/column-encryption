@@ -19,7 +19,6 @@ namespace ColumnEncrypt.DataProviders
     public class AvroDataReader : IColumnarDataReader, IDisposable
     {
         private Stream _fileReaderStream;
-        // private string[] _fieldNames;
         private IList<FileEncryptionSettings> _fileEncryptionSettings;
         private IDictionary<string, EncryptionKeyStoreProvider> _encryptionKeyStoreProviders;
         private Dictionary<string, Type> _fields;
