@@ -12,7 +12,7 @@ using Microsoft.Data.Encryption.FileEncryption;
 namespace ColumnEncrypt.DataProviders
 {
     /// <summary> Handles reading data from delimited files </summary>
-    public class CSVDataReader : IColumnarDataReader, IDisposable
+    public class CSVFileReader : IColumnarDataReader, IDisposable
     {
         private readonly CsvReader csvReader;
         private IList<FileEncryptionSettings> encryptionSettings;
@@ -35,7 +35,7 @@ namespace ColumnEncrypt.DataProviders
         /// <summary> Initializes a new instance of <see cref="CSVDataReader"/> class </summary>
         /// <param name="reader">source csv file</param>
         /// <param name="settings">column encryption settings</param>
-        public CSVDataReader(StreamReader reader)
+        public CSVFileReader(StreamReader reader)
         {
             this.csvReader = new CsvReader(reader, CultureInfo.InvariantCulture, true);
             header = ReaderHeaderIfRequired();

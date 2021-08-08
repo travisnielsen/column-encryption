@@ -9,7 +9,7 @@ using Microsoft.Data.Encryption.FileEncryption;
 namespace ColumnEncrypt.DataProviders
 {
     /// <summary> Handles writing data to delimited files </summary>
-    public class CSVDataWriter : IColumnarDataWriter, IDisposable
+    public class CSVFileWriter : IColumnarDataWriter, IDisposable
     {
         private readonly CsvWriter csvWriter;
         private IList<FileEncryptionSettings> encryptionSettings;
@@ -24,7 +24,7 @@ namespace ColumnEncrypt.DataProviders
 
         /// <summary> Initializes a new instances of <see cref="CSVDataWriter"/> class </summary>
         /// <param name="writer"> Text writer to the destination file </param>
-        public CSVDataWriter(StreamWriter writer, IList<FileEncryptionSettings> settings)
+        public CSVFileWriter(StreamWriter writer, IList<FileEncryptionSettings> settings)
         {
             this.csvWriter = new CsvWriter(writer, CultureInfo.InvariantCulture);
             this.encryptionSettings = settings;

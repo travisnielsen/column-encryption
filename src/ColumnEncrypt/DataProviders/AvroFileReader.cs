@@ -16,7 +16,7 @@ using ColumnEncrypt.Util;
 
 namespace ColumnEncrypt.DataProviders
 {
-    public class AvroDataReader : IColumnarDataReader, IDisposable
+    public class AvroFileReader : IColumnarDataReader, IDisposable
     {
         private Stream _fileReaderStream;
         private IList<FileEncryptionSettings> _fileEncryptionSettings;
@@ -56,7 +56,7 @@ namespace ColumnEncrypt.DataProviders
             }
         }
 
-        public AvroDataReader(Stream readerStream, IDictionary<string, EncryptionKeyStoreProvider> encryptionKeyStoreProviders)
+        public AvroFileReader(Stream readerStream, IDictionary<string, EncryptionKeyStoreProvider> encryptionKeyStoreProviders)
         {
             _fileReaderStream = readerStream;
             _encryptionKeyStoreProviders = encryptionKeyStoreProviders;

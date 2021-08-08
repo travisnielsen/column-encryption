@@ -15,42 +15,22 @@ namespace ColumnEncrypt
 {
     public static class Crypto
     {
-        public static void FileTransform(IColumnarDataReader reader, IColumnarDataWriter writer)
-        {
-            ColumnarCryptographer cryptographer = new ColumnarCryptographer(reader, writer);
-
-            try
-            {
-                cryptographer.Transform();
-                Console.WriteLine($"File processed successfully. Verify output file contains encrypted data.");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
-        }
-
-
         public static void FileTransform(FileData input, FileData output, DataProtectionConfig config, TokenCredential credential, string[] columns)
         {
             ColumnarCryptographer cryptographer;
-
-            // initialize the reader & writer so checks can be done later for value
             IDisposable reader = null;
             IDisposable writer = null;
             Dictionary<int, string> transformColumnIndexes = null;
             IList<FileEncryptionSettings> readerEncryptionSettings = null;
 
-
-            // switch on the input type and create the reader & the writer if "CSV" else create the parquet writer further down
             switch (input.FileType)
             {
                 case FileType.csv:
-                    reader = new CSVDataReader(new StreamReader(input.FilePath));
-                    string[] header = ((CSVDataReader)reader).Header;
+                    reader = new CSVFileReader(new StreamReader(input.FilePath));
+                    string[] header = ((CSVFileReader)reader).Header;
                     transformColumnIndexes = GetColumnIndexes(header, columns);
                     var encryptionSettings = ColumnSettings.GetEncryptionSettings(config, header, new AzureKeyVaultKeyStoreProvider(credential), input.IsEncrypted);
-                    ((CSVDataReader)reader).FileEncryptionSettings = encryptionSettings;
+                    ((CSVFileReader)reader).FileEncryptionSettings = encryptionSettings;
                     break;
 
                 case FileType.parquet:
@@ -64,18 +44,17 @@ namespace ColumnEncrypt
                 case FileType.avro:
                     Dictionary<string, EncryptionKeyStoreProvider> avroEncryptionKeyStoreProviders = new Dictionary<string, EncryptionKeyStoreProvider>();
                     avroEncryptionKeyStoreProviders.Add("AZURE_KEY_VAULT", new AzureKeyVaultKeyStoreProvider(credential));
-                    reader = new AvroDataReader(File.OpenRead(input.FilePath), avroEncryptionKeyStoreProviders);
-                    transformColumnIndexes = GetColumnIndexes(((AvroDataReader)reader).FieldNames, columns);
-                    readerEncryptionSettings = ((AvroDataReader)reader).FileEncryptionSettings;
+                    reader = new AvroFileReader(File.OpenRead(input.FilePath), avroEncryptionKeyStoreProviders);
+                    transformColumnIndexes = GetColumnIndexes(((AvroFileReader)reader).FieldNames, columns);
+                    readerEncryptionSettings = ((AvroFileReader)reader).FileEncryptionSettings;
                     break;
             }
 
-            // Create the writer object
             switch (output.FileType)
             {
                 case FileType.csv:
                     IList<FileEncryptionSettings> csvWriterSettings = ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted);
-                    writer = new CSVDataWriter(new StreamWriter(output.FilePath), csvWriterSettings);
+                    writer = new CSVFileWriter(new StreamWriter(output.FilePath), csvWriterSettings);
                     break;
 
                 case FileType.parquet:
@@ -85,7 +64,7 @@ namespace ColumnEncrypt
                 
                 case FileType.avro:
                     IList<FileEncryptionSettings> avroWriterSettings = ColumnSettings.GetWriterSettings(((IColumnarDataReader)reader).FileEncryptionSettings, transformColumnIndexes, new AzureKeyVaultKeyStoreProvider(credential), output.IsEncrypted);
-                    writer = new AvroDataWriter(new StreamWriter(output.FilePath), avroWriterSettings , output.Schema);
+                    writer = new AvroFileWriter(new StreamWriter(output.FilePath), avroWriterSettings , output.Schema);
                     break;
             }
 

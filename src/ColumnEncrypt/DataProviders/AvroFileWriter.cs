@@ -13,7 +13,7 @@ using ColumnEncrypt.Metadata;
 
 namespace ColumnEncrypt.DataProviders
 {
-    public class AvroDataWriter : IColumnarDataWriter, IDisposable
+    public class AvroFileWriter : IColumnarDataWriter, IDisposable
     {
         private StreamWriter _fileWriterStream;
         private Schema _avroSchema;
@@ -32,7 +32,7 @@ namespace ColumnEncrypt.DataProviders
         /// <param name="writerStream">Text writer to the destination file</param>
         /// <param name="settings">Text writer to the destination file</param>
         /// <param name="avroSchema">serialized JSON scheme representing the document schema</param>
-        public AvroDataWriter(StreamWriter writerStream, IList<FileEncryptionSettings> settings, string schema)
+        public AvroFileWriter(StreamWriter writerStream, IList<FileEncryptionSettings> settings, string schema)
         {
             this._fileWriterStream = writerStream;
             this._fileEncryptionSettings = settings;
