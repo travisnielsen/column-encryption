@@ -1,5 +1,3 @@
-param region string = 'centralus'
-param appPrefix string = 'mdedemo'
 param storageContainerName string = 'userdata'
 param cekName string = 'mde-sensitive'
 param userObjectId string
@@ -14,7 +12,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   location: resourceGroup().location
   sku: {
     name: 'Standard_LRS'
-    tier: 'Standard'
   }
   kind: 'StorageV2'
   properties: {
@@ -29,6 +26,34 @@ resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@20
   dependsOn: [
     storageAccount
   ]
+}
+
+/*
+Event Hub
+*/
+
+resource eventHubNamespace 'Microsoft.EventHub/namespaces@2021-06-01-preview' = {
+  name: 'mdedemo-${uniqueString(resourceGroup().id)}' // event hub namespaces must begin with a letter
+  location: resourceGroup().location
+  sku: {
+    name: 'Standard'
+    tier: 'Standard'
+    capacity: 1
+  }
+  properties: {
+    kafkaEnabled: true
+    isAutoInflateEnabled: false
+    maximumThroughputUnits: 0
+  }
+}
+
+
+resource eventHub 'Microsoft.EventHub/namespaces/eventhubs@2021-06-01-preview' = {
+  name: '${eventHubNamespace.name}/userdata'
+  properties: {
+    messageRetentionInDays: 1
+    partitionCount: 1
+  }
 }
 
 /*
@@ -100,10 +125,10 @@ resource functionApp 'Microsoft.Web/sites@2020-06-01' = {
   tags: tags
 }
 
-
 /*
 Key Vault
 */
+
 resource keyvault 'Microsoft.KeyVault/vaults@2019-09-01' = {
   name: 'akv${uniqueString(resourceGroup().id)}' // AKV name must start with a letter
   location: resourceGroup().location
@@ -186,6 +211,7 @@ resource key 'Microsoft.KeyVault/vaults/keys@2019-09-01' = {
 /*
 SQL SERVER AND DATABASE
 */
+
 resource sqlServer 'Microsoft.Sql/servers@2019-06-01-preview' = {
   name: uniqueString(resourceGroup().id)
   location: resourceGroup().location

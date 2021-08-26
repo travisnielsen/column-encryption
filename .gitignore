@@ -366,3 +366,6 @@ local.settings.json
 userdata-*.csv
 userdata-*.parquet
 userdata-*.avro
+
+# bicep json file
+deployment.json
