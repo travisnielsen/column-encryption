@@ -369,3 +369,5 @@ userdata-*.avro
 
 # bicep json file
 deployment.json
+
+appsettings.json

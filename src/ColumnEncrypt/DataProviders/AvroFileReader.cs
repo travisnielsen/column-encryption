@@ -60,7 +60,7 @@ namespace ColumnEncrypt.DataProviders
         {
             _fileReaderStream = readerStream;
             _encryptionKeyStoreProviders = encryptionKeyStoreProviders;
-            _logicalTypeFactory.Register(new EncryptedLogicalType());
+            _logicalTypeFactory.Register(new EncryptedLogicalTypeFile());
             _fields = new Dictionary<string, Type>();
         }
 

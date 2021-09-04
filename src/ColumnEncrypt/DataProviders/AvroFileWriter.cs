@@ -8,7 +8,6 @@ using Avro;
 using Avro.File;
 using Avro.Util;
 using Avro.Generic;
-using ColumnEncrypt.Data;
 using ColumnEncrypt.Metadata;
 
 namespace ColumnEncrypt.DataProviders
@@ -36,7 +35,7 @@ namespace ColumnEncrypt.DataProviders
         {
             this._fileWriterStream = writerStream;
             this._fileEncryptionSettings = settings;
-            logicalTypeFactory.Register(new EncryptedLogicalType());
+            logicalTypeFactory.Register(new EncryptedLogicalTypeFile());
 
             if (schema != null)
             {

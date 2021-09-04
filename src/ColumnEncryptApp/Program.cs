@@ -6,6 +6,7 @@ using ColumnEncrypt.Config;
 using ColumnEncrypt.Metadata;
 using Azure.Core;
 using Azure.Identity;
+using Microsoft.Extensions.Configuration;
 
 namespace ColumnEncrypt.App
 {
@@ -13,7 +14,7 @@ namespace ColumnEncrypt.App
     {
         private static readonly TokenCredential tokenCredential = new InteractiveBrowserCredential();
 
-        [Argument(0, Description = "The command to execute.  'encrypt' or 'decrypt'.")]
+        [Argument(0, Description = "The command to execute: 'encrypt', 'decrypt', or 'stream'.")]
         [Required]
         public string Command { get; }
 
@@ -35,8 +36,10 @@ namespace ColumnEncrypt.App
 
         public static int Main(string[] args) => CommandLineApplication.Execute<Program>(args);
 
-        private void OnExecute()
+        private async void OnExecute()
         {
+            IConfiguration config = new ConfigurationBuilder().AddJsonFile("appsettings.json", true, true).Build();
+
             string inputExtension = Path.GetExtension(InputFilePath);
             string outPath = OutputFilePath ?? (Path.GetFileNameWithoutExtension(InputFilePath) + "_output" + inputExtension);
 
@@ -47,7 +50,6 @@ namespace ColumnEncrypt.App
                 YamlConfigReader configFile = new YamlConfigReader(MetadataFilePath);
                 protectionConfig = configFile.Read();
             }
-
 
             string[] columns = new string[0];
 
@@ -78,18 +80,23 @@ namespace ColumnEncrypt.App
                 case "encrypt":
                     sourceFile = new FileData(InputFilePath, false, avroSchema);
                     targetFile = new FileData(outPath, true, avroSchema);
+                    ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential, columns);
                     break; 
                 case "decrypt":
                     sourceFile = new FileData(InputFilePath, true, avroSchema);
                     targetFile = new FileData(outPath, false, avroSchema);
-                    // ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential, columns);
+                    ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential, columns);
+                    break;
+                case "stream":
+                    string connectionString = config["eventHubConnectionString"];
+                    if (String.IsNullOrEmpty(connectionString)) throw new Exception("Missing 'eventHubConnectionString' in appsettings.json");
+                    await EventHubClient.SendEvent(connectionString, InputFilePath);
                     break;
                 default:
-                    Console.WriteLine("Not a valid command. Try 'encrypt' or 'decrypt' as a command.");
+                    Console.WriteLine("Not a valid command. Try 'encrypt', 'decrypt', or 'stream' as a command.");
                     break;
             }
 
-            ColumnEncrypt.Crypto.FileTransform(sourceFile, targetFile, protectionConfig, tokenCredential, columns);
         }
     }
 }

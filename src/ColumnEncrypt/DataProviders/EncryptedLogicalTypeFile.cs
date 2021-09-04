@@ -3,13 +3,16 @@ using Avro;
 using Avro.Util;
 using ColumnEncrypt.Util;
 
-namespace ColumnEncrypt.Data
+namespace ColumnEncrypt.DataProviders
 {
-    public class EncryptedLogicalType : LogicalType
+    public class EncryptedLogicalTypeFile : LogicalType
     {
         public static readonly string LogicalTypeName = "encrypted";
 
-        public EncryptedLogicalType() : base(LogicalTypeName) { }
+        /// <summary>
+        /// Support serialization / deserialization of Avro files when using the Microsoft.Data.Encryption.FileEncryption API
+        /// </summary>
+        public EncryptedLogicalTypeFile() : base(LogicalTypeName) { }
 
         public override object ConvertToBaseValue(object logicalValue, LogicalSchema schema)
         {
