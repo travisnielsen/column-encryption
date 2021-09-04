@@ -51,8 +51,8 @@ namespace ColumnEncrypt.DataProviders
                 string encryptionTypeInfo = schema.GetProperty("encryptionType").Replace("\"", "").Replace("\\", "");
                 EncryptionType encryptionType = (encryptionTypeInfo.ToLower() == "randomized") ? EncryptionType.Randomized : EncryptionType.Deterministic;
                 ProtectedDataEncryptionKey key = _dataEncryptionKeys.Where(x => x.Name == dekName).FirstOrDefault();
-                var encryptionSettings = new EncryptionSettings<string>(key, encryptionType, StandardSerializerFactory.Default.GetDefaultSerializer<string>());
-                var decryptedValue = ((byte[])baseValue).Decrypt<string>(encryptionSettings);
+                var encryptionSettings = new EncryptionSettings<string>(key, encryptionType, new SqlVarCharSerializer (size: 255) );
+                string decryptedValue = ((byte[])baseValue).Decrypt<string>(encryptionSettings);
                 return decryptedValue;
             }
             else
@@ -97,4 +97,37 @@ namespace ColumnEncrypt.DataProviders
             return deks;
         }
     }
+
+    /*
+    public class CustomSerializer : Serializer<string>
+    {
+        private const int AgeSize = sizeof (int);
+        private const int StringLengthSize = sizeof (int);
+        private const int BytesPerCharacter = 2;
+        private const int FirstNameIndex = AgeSize + StringLengthSize;
+
+        public override string Identifier => "ColumnEncryptionString";
+
+        public override string Deserialize(byte[] bytes)
+        {
+
+            string value =  .GetString(bytes);
+        }
+
+        public override byte[] Serialize (Person value) {
+            byte[] ageBytes = BitConverter.GetBytes (value.Age);
+            byte[] firstNameLengthBytes = BitConverter.GetBytes (value.FirstName.Length);
+            byte[] firstNameBytes = Unicode.GetBytes (value.FirstName);
+            byte[] lastNameLengthBytes = BitConverter.GetBytes (value.LastName.Length);
+            byte[] lastNameBytes = Unicode.GetBytes (value.LastName);
+
+            return ageBytes
+                .Concat (firstNameLengthBytes)
+                .Concat (firstNameBytes)
+                .Concat (lastNameLengthBytes)
+                .Concat (lastNameBytes)
+                .ToArray ();
+        }
+    }
+    */
 }
