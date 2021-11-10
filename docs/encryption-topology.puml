@@ -31,100 +31,89 @@ LAYOUT_LEFT_RIGHT
 
 ' title Azure Operational Topology (single-region)
 
+skinparam BackgroundColor #002b36
+skinparam TitleFontColor #eee8d5
+skinparam TitleFontSize 35
+
 skinparam Rectangle {
-    BackgroundColor<<EnterpriseKeyMgmt>> #E3E3E3
-    BackgroundColor<<AzureVirtualMachine>> #FFFFB3
-    BackgroundColor<<AzureDatabricks>> #FFFFB3
-    BackgroundColor<<AzureFunction>> #FFFFB3
-    BackgroundColor<<AzureSqlDataWarehouse>> #E6CCFF
-    BackgroundColor<<AzureSqlDatabase>> #CCFFDD
-    BackgroundColor<<AzureCosmosDb>> #CCFFDD
+    BackgroundColor<<functionalGroup>> #586e75
+    FontColor<<functionalGroup>> #eee8d5
+    FontSize<<functionalGroup>> 36
     BackgroundColor<<AzureVirtualMachineScaleSet>> #CCFFDD
-    BackgroundColor<<powerBiWeb>> #E6CCFF
-    BackgroundColor<<AzureAnalysisServices>> #E6CCFF
 }
 
+skinparam package<<container>> {
+    StereotypeFontColor<<VirtualNetworks>> #eee8d5
+    FontSize 16
+}
 
-' Rectangle "<color:#0072C6><$AzureVirtualMachine></color>" <<AzureVirtualMachine>> as myFunction
+skinparam ArrowThickness 4
+skinparam ArrowFontSize 22
 
-AzureDataFactory(adf, "Data Orchestration", "Data import and processing definitions")
-
-Rectangle "On-Premises" {
+Rectangle "On-Premises" <<functionalGroup>> {
     Container(dataFile, "Source system", "SSN,RX_ID, SERVICE_DATE")
     AzureVirtualMachine(console, "INGEST", "Always Protected SDK", "Service Principal")
 }
 
-Rectangle "Enterprise Key Management Infrastructure" <<enterpriseKeyMgmt>> {
+Rectangle "Encryption Infrastructure" <<functionalGroup>> {
     AzureKeyVault(kvphi, "PHI vault", "Premium SKU for HSM", "RBAC for CMKs\nSoft delete\nPurge protection\nResource locking")
     AzureBlobStorage(keymetadata, "Encryption Metadata", "General Purpose V2 (RA-GRS)", "WORM-backed storage\nGeo-replicated\nVersioning")
-    AzureLogAnalytics(logs, "Activity logs", "")
-    AzureSentinel(siem, "Threat detection", "")
-    AzureMonitor(monitor, "Control plane events and telemetry", "", "Performance metrics\nAlerts")
 }
 
-Rectangle "Data Estate Core" {
+Rectangle "Data Engines" <<functionalGroup>> {
+    AzureDataFactory(adf, "Data Orchestration", "Data import and processing definitions")
     AzureDataLakeStorage(adls, "STORE", "Gen2 w/AAD-based RBAC", "Parquet files w/ embedded key metadata")
-    AzureDatabricks(databricks, "PREPARE", "Parquet Modular Encryption","Service Principal")
-}
+    AzureDatabricks(databricks, "PREPARE", "Parquet Modular Encryption","Service Principal") {
+        Container(azureSdk, "Azure SDK", "Cosmos DB client", "")
+        Container(udf, "User Defined Function", "MDE SDK", "Avro file support")
+    }
 
-Rectangle "MODEL AND SERVE" {
-    AzureCosmosDb(cosmos, "", "", "CMK metadata\nCEK metadata")
-    AzureSqlDataWarehouse(sqldw, "Azure Synapse", "", "encrypted columns")
-    AzureAnalysisServices(aas, "Semantic Layer", "", "Column / row-level security\nDynamic data masking")
-    Rectangle "<b>SaaS Reporting</b>\nSelf Service" <<powerBiWeb>> as powerbi
+    AzureCosmosDb(cosmos, "Transactions", "Always Encrypted\nChange Feed", "CMK metadata\nCEK metadata")
     AzureSqlDatabase(sql, "OLTP / Reporting", "SQL Always Encrypted", "CMK metadata\nCEK metadata")
-    ' AzureVirtualMachineScaleSet(vmss, "SQL Analysis Services", "Load balanced", "CMKs (certificates)")
-    Container(powerbidesktop, "PowerBI (desktop)", "Direct Connect", "Reports / Dashboards")
 }
 
-Rel(databricks, sqldw, "Push data w/ FLE")
-Rel(databricks, sql, "Push data w/ FLE")
-Rel(databricks, cosmos, "Push data w/ FLE")
+Rectangle "Processing" <<functionalGroup>> {
+    AzureFunction(changeFeedFunc, "PROCESS", "App Services / Container", "Managed Identity") {
+        Container(cosmosDbSdk, "Cosmos SDK", "", "")
+    }
 
-Rel(sqldw, aas, "Query")
-Rel_Back(aas, powerbi, "Load report")
-' Rel(sql, vmss, "Query")
-' Rel(vmss, vmss, "Decrypt")
-Rel_Back(sql, powerbidesktop, "Decrypt (ODBC)")
+    AzureVirtualMachine(sqlClientVM, "QUERY", "", "") {
+        Container(sqlDriver, "SQL Client", "", "")
+    }
+}
 
-Rectangle "Event Streaming" as EventStream {
+Rectangle "Event Streaming" <<functionalGroup>> as EventStream {
     AzureEventHub(eventhub, "Events", "Standard or Kafka", "Includes FLE-protected columns (Avro)")
     AzureFunction(function, "INGEST", "App Services / Container", "Managed Identity")
 }
 
-Rel(eventhub, function, "pull events")
-Rel_Back(function, keymetadata, "Load config")
-Rel(function, function, "Decrypt, process, encrypt")
-' Rel(function, kvphi, "Decrypt DEK")
+eventhub -[#eee8d5]-> function: "<color:#eee8d5>Event trigger"
+function <-[#cb4b16]--- keymetadata
+function -[#859900]---> kvphi
+function -[#eee8d5]-> function: "<color:#eee8d5>Decrypt, process"
 
-' adf -[#FF0000]-> console
-adf -[#FF0000]-> databricks
+console -[#859900]-> kvphi: "<color:#859900>UNWRAP DEK"
 
-console -[#00B300]-> kvphi: "<color:#00B300>Unwrap DEK"
-databricks -[#00B300]-> kvphi
-function -[#00B300]-> kvphi
-kvphi <-[#00B300]- powerbidesktop
+dataFile -[#eee8d5]-> console: "<color:#eee8d5>Data Factory connector"
+console <-[#cb4b16]- keymetadata: "<color:#cb4b16>LOAD CONFIG"
+console -[#eee8d5]-> console: "<color:#eee8d5>Encrypt: SSN, PAT_ID with DEK"
+console -[#eee8d5]-> adls: "<color:#eee8d5>Push FLE-protected data"
 
-Rel(dataFile, console, "Data Factory connector")
-Rel_Back(console, keymetadata, "Load configuration")
-' Rel(console, kvphi, "Decrypt DEK")
-Rel(console, console, "Encrypt: SSN, RX_ID with DEK")
-Rel(console, adls, "Push FLE-protected data")
-Rel(adls, databricks, "1. load raw data")
-' Rel(databricks, kvphi, "2. Decrypt DEK")
-Rel(databricks, databricks, "3. Decrypt, process, encrypt")
-Rel_Back(adls, databricks, "4. Processed data")
-Rel(keymetadata, logs, "Activity")
-Rel(kvphi, logs, "Activity")
-Rel(logs, siem, "Forward events")
-Rel(keymetadata, monitor, "Change audit")
-Rel(kvphi, monitor, "Change audit")
+adf -[#eee8d5]-> databricks
+adls -[#eee8d5]-> databricks: "<color:#eee8d5>Load raw data"
+udf -[#859900]-> kvphi
+udf -[#002b36]-> udf: "<color:#002b36>Decrypt, process, encrypt"
+udf -[#002b36]-> azureSdk
 
-legend right
-    |Color| Encryption Tooling |
-    |<#FFFFB3>| Always Protected SDK|
-    |<#CCFFDD>| Data engine client |
-    |<#D9B3FF>| In review |
-endlegend
+azureSdk -[#268bd2]-> sql: "<color:#eee8d5>Push data w/ FLE"
+azureSdk -[#268bd2]-> cosmos: "<color:#eee8d5>Push data w/ FLE"
+
+cosmos -[#eee8d5]--> cosmosDbSdk: "<color:#eee8d5>Changes"
+kvphi <-[#859900]- cosmosDbSdk
+cosmosDbSdk -[#002b36]-> cosmosDbSdk: "<color:#002b36>Decrypt"
+
+sql <--[#eee8d5]- sqlDriver: "<color:#eee8d5>Query"
+kvphi <-[#859900]- sqlDriver
+sqlDriver -[#002b36]-> sqlDriver: "<color:#002b36>Decrypt"
 
 @enduml
