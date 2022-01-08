@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Apache.Avro" Version="1.10.2" />
+    <PackageReference Include="Apache.Avro" Version="1.11.0" />
     <PackageReference Include="CsvHelper" Version="26.0.1" />
     <PackageReference Include="YamlDotNet" Version="9.1.4" />
     <PackageReference Include="Microsoft.Data.Encryption.Cryptography" Version="0.2.0-pre" />
